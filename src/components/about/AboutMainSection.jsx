@@ -16,13 +16,13 @@ export default function AboutMainSection() {
             Seamless Comfort and Hospitality
           </h1>
           <p className="text-2xl">
-            Caritas Inn, Igbobi seamlessly blends modern comfort with the warmth
+            Caritas Inn, Ilasan seamlessly blends modern comfort with the warmth
             of West African hospitality, offering a unique and inviting
             experience for our esteemed guests. Located in the serene and
-            accessible Yaba area of Lagos, our hotel offers a balanced mix of
-            relaxation, workspaces, and proximity to popular destinations,
+            upscale Lekki Phase 2 area of Lagos, our hotel offers a balanced mix
+            of relaxation, workspaces, and proximity to popular destinations,
             making it a top choice for travelers seeking comfort and convenience
-            in Yaba.
+            in Lekki.
           </p>
         </div>
         <div data-component="Block2" className="flex flex-col w-full">
@@ -45,9 +45,9 @@ export default function AboutMainSection() {
                 Your Ideal Retreat for Comfort and Convenience
               </h1>
               <p className="text-2xl">
-                Welcome to a new standard of hospitality in Yaba. Caritas Inn is
-                a modern hotel located in the peaceful Igbobi area with few
-                minutes' drive from the University of Lagos. It offers a perfect
+                Welcome to a new standard of hospitality in Lekki. Caritas Inn
+                is a modern hotel located in the peaceful Ilasan area with easy
+                access to the Lekki-Epe Expressway. It offers a perfect
                 environment for both business and leisure travelers by combining
                 comfort, functionality, and elegance. The hotel features a
                 variety of well-appointed rooms designed for relaxation,
@@ -67,8 +67,8 @@ export default function AboutMainSection() {
                 Experience Tranquil Stays with Unmatched Security
               </h1>
               <p className="text-2xl">
-                Caritas Inn is a modern hotel located in the peaceful Yaba area.
-                We ensure a secure environment with advanced surveillance
+                Caritas Inn is a modern hotel located in the peaceful Lekki
+                area. We ensure a secure environment with advanced surveillance
                 systems and a dedicated team, providing peace of mind throughout
                 your stay. We offer more than just a place to stay; we provide a
                 luxurious experience marked by comfort, security, and

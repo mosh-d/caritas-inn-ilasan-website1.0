@@ -1,10 +1,10 @@
-# Caritas Inn Igbobi
+# Caritas Inn Ilasan
 
-Caritas Inn Hotel Igbobi, Yaba frontend application.
+Caritas Inn Hotel Ilasan, Lekki Phase 2 frontend application.
 
 ## Branch Information
 
-- **Branch ID**: 3
-- **Room Types**: Standard (6), Classic (7), Deluxe (8), Executive (9)
-- **Location**: Igbobi College Road, Beside First Bank, WAEC Bus-stop, Yaba, Lagos
-- **Website**: https://caritasinnigbobi.fivecloverhotels.com
+- **Branch ID**: 4
+- **Room Types**: Budget (10), Standard (11), Superior (12), Executive (13), Deluxe (14)
+- **Location**: 2, Howard Edafe Street, Ilasan, Lekki Phase 2, Lagos
+- **Website**: https://caritasinnilasan.fivecloverhotels.com

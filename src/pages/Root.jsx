@@ -29,7 +29,7 @@ export default function RootLayout() {
   const [roomTypeId, setRoomTypeId] = useState(null);
   const [totalPayment, setTotalPayment] = useState(0);
   const [roomPrices, setRoomPrices] = useState({});
-  const [branchId] = useState(3); // Caritas Inn Igbobi branch ID
+  const [branchId] = useState(4); // Caritas Inn Ilasan branch ID
   const [roomTypes, setRoomTypes] = useState([]);
   const [isLoadingRooms, setIsLoadingRooms] = useState(true);
 
@@ -197,11 +197,12 @@ export default function RootLayout() {
 
   // Get current page metadata
   const getPageMetadata = () => {
-    const baseUrl = "https://caritasinnigbobi.fivecloverhotels.com";
+    const baseUrl = "https://caritasinnilasan.fivecloverhotels.com";
     const defaultMetadata = {
-      title: "Caritas Inn Igbobi | Luxury Accommodation in Yaba, Lagos",
+      title:
+        "Caritas Inn Ilasan | Luxury Accommodation in Lekki Phase 2, Lagos",
       description:
-        "Experience luxury and comfort at Caritas Inn Igbobi. Book your stay at our premium hotel in Yaba, Lagos.",
+        "Experience luxury and comfort at Caritas Inn Ilasan. Book your stay at our premium hotel in Lekki Phase 2, Lagos.",
       url: `${baseUrl}${location.pathname}`,
       type: "website",
       image: "/ring-ruby-logo.webp",
@@ -209,34 +210,35 @@ export default function RootLayout() {
 
     const pageMetadata = {
       "/": {
-        title: "Caritas Inn Igbobi | Luxury Accommodation in Yaba, Lagos",
+        title:
+          "Caritas Inn Ilasan | Luxury Accommodation in Lekki Phase 2, Lagos",
         description:
-          "Experience luxury and comfort at Caritas Inn Igbobi. Book your stay at our premium hotel in Yaba, Lagos.",
+          "Experience luxury and comfort at Caritas Inn Ilasan. Book your stay at our premium hotel in Lekki Phase 2, Lagos.",
       },
       "/about": {
-        title: "About Us | Caritas Inn Igbobi",
+        title: "About Us | Caritas Inn Ilasan",
         description:
-          "Discover the story behind Caritas Inn Igbobi and our commitment to providing exceptional hospitality in Yaba, Lagos.",
+          "Discover the story behind Caritas Inn Ilasan and our commitment to providing exceptional hospitality in Lekki Phase 2, Lagos.",
       },
       "/rooms": {
-        title: "Our Rooms | Caritas Inn Igbobi",
+        title: "Our Rooms | Caritas Inn Ilasan",
         description:
-          "Explore our luxurious rooms at Caritas Inn Igbobi, designed for your comfort and relaxation.",
+          "Explore our luxurious rooms at Caritas Inn Ilasan, designed for your comfort and relaxation.",
       },
       "/gallery": {
-        title: "Photo Gallery | Caritas Inn Igbobi",
+        title: "Photo Gallery | Caritas Inn Ilasan",
         description:
-          "View our photo gallery showcasing the luxurious facilities and comfortable accommodations at Caritas Inn Igbobi.",
+          "View our photo gallery showcasing the luxurious facilities and comfortable accommodations at Caritas Inn Ilasan.",
       },
       "/contact": {
-        title: "Contact Us | Caritas Inn Igbobi",
+        title: "Contact Us | Caritas Inn Ilasan",
         description:
-          "Get in touch with Caritas Inn Igbobi. Our friendly staff is ready to assist with your booking and inquiries.",
+          "Get in touch with Caritas Inn Ilasan. Our friendly staff is ready to assist with your booking and inquiries.",
       },
       "/booking": {
-        title: "Book Your Stay | Caritas Inn Igbobi",
+        title: "Book Your Stay | Caritas Inn Ilasan",
         description:
-          "Book your luxurious stay at Caritas Inn Igbobi. Best rates guaranteed for our premium accommodations in Yaba.",
+          "Book your luxurious stay at Caritas Inn Ilasan. Best rates guaranteed for our premium accommodations in Lekki Phase 2.",
       },
     };
 
@@ -260,25 +262,24 @@ export default function RootLayout() {
           {JSON.stringify({
             "@context": "https://schema.org",
             "@type": "Hotel",
-            name: "Caritas Inn Igbobi",
+            name: "Caritas Inn Ilasan",
             description:
-              "Experience luxury and comfort at Caritas Inn Igbobi. Book your stay at our premium hotel in Yaba, Lagos.",
+              "Experience luxury and comfort at Caritas Inn Ilasan. Book your stay at our premium hotel in Lekki Phase 2, Lagos.",
             image:
-              "https://caritasinnigbobi.fivecloverhotels.com/caritas%20logo.webp",
-            url: "https://caritasinnigbobi.fivecloverhotels.com",
+              "https://caritasinnilasan.fivecloverhotels.com/caritas%20logo.webp",
+            url: "https://caritasinnilasan.fivecloverhotels.com",
             address: {
               "@type": "PostalAddress",
-              streetAddress:
-                "Igbobi College Road, Beside First Bank, WAEC Bus-stop, Yaba",
-              addressLocality: "Yaba",
+              streetAddress: "2, Howard Edafe Street, Ilasan, Lekki Phase 2",
+              addressLocality: "Lekki",
               addressRegion: "Lagos",
               postalCode: "100001",
               addressCountry: "NG",
             },
             geo: {
               "@type": "GeoCoordinates",
-              latitude: 6.521371272421725,
-              longitude: 3.3715264111270296,
+              latitude: 6.431359668871449,
+              longitude: 3.5022371276345114,
             },
             priceRange: "₦₦",
             starRating: {
@@ -286,8 +287,8 @@ export default function RootLayout() {
               ratingValue: "4.5",
               bestRating: "5",
             },
-            telephone: "+2348126955544",
-            email: "info@caritasinnigbobihotel.com",
+            telephone: "+2347042798946",
+            email: "info@caritasinnilasanhotel.com",
             sameAs: [
               "https://www.facebook.com/RingrubyHotel?_rdc=1&_rdr#",
               "https://www.instagram.com/ringruby_hotel/",

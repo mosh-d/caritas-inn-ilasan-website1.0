@@ -20,13 +20,13 @@ import Gallery17 from "../../assets/gallery/gallery-17.jpg";
 import Gallery18 from "../../assets/gallery/gallery-18.jpg";
 import Gallery19 from "../../assets/gallery/gallery-19.jpg";
 import Gallery20 from "../../assets/gallery/gallery-20.jpg";
-import Gallery21 from "../../assets/gallery/gallery-21.jpg";
-import Gallery22 from "../../assets/gallery/gallery-22.jpg";
-import Gallery23 from "../../assets/gallery/gallery-23.jpg";
-import Gallery24 from "../../assets/gallery/gallery-24.jpg";
-import Gallery25 from "../../assets/gallery/gallery-25.jpg";
-import Gallery26 from "../../assets/gallery/gallery-26.jpg";
-import Gallery27 from "../../assets/gallery/gallery-27.jpg";
+// import Gallery21 from "../../assets/gallery/gallery-21.jpg";
+// import Gallery22 from "../../assets/gallery/gallery-22.jpg";
+// import Gallery23 from "../../assets/gallery/gallery-23.jpg";
+// import Gallery24 from "../../assets/gallery/gallery-24.jpg";
+// import Gallery25 from "../../assets/gallery/gallery-25.jpg";
+// import Gallery26 from "../../assets/gallery/gallery-26.jpg";
+// import Gallery27 from "../../assets/gallery/gallery-27.jpg";
 
 export default function GallerySection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
@@ -54,13 +54,13 @@ export default function GallerySection() {
     { src: Gallery18, alt: "Gallery 18" },
     { src: Gallery19, alt: "Gallery 19" },
     { src: Gallery20, alt: "Gallery 20" },
-    { src: Gallery21, alt: "Gallery 21" },
-    { src: Gallery22, alt: "Gallery 22" },
-    { src: Gallery23, alt: "Gallery 23" },
-    { src: Gallery24, alt: "Gallery 24" },
-    { src: Gallery25, alt: "Gallery 25" },
-    { src: Gallery26, alt: "Gallery 26" },
-    { src: Gallery27, alt: "Gallery 27" },
+    // { src: Gallery21, alt: "Gallery 21" },
+    // { src: Gallery22, alt: "Gallery 22" },
+    // { src: Gallery23, alt: "Gallery 23" },
+    // { src: Gallery24, alt: "Gallery 24" },
+    // { src: Gallery25, alt: "Gallery 25" },
+    // { src: Gallery26, alt: "Gallery 26" },
+    // { src: Gallery27, alt: "Gallery 27" },
   ];
 
   const openModal = (index) => {

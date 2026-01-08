@@ -11,73 +11,73 @@ import beaches from "../../assets/hotel-surroundings/beaches.webp";
 
 const TOP_ATTRACTIONS = [
   {
-    title: "National Theatre",
+    title: "Elegushi Beach",
     distance: "3 km",
   },
   {
-    title: "University of Lagos (UNILAG)",
-    distance: "2 km",
-  },
-  {
-    title: "Teslim Balogun Stadium",
-    distance: "4 km",
-  },
-  {
-    title: "Freedom Park Lagos",
+    title: "Novare Mall Sangotedo",
     distance: "5 km",
   },
   {
-    title: "Mainland Market",
-    distance: "1 km",
+    title: "La Campagne Tropicana Beach Resort",
+    distance: "8 km",
+  },
+  {
+    title: "Lakowe Lakes Golf Club",
+    distance: "6 km",
+  },
+  {
+    title: "The Palms Shopping Mall",
+    distance: "10 km",
   },
 ];
 
 const SUPERMARKETS = [
   {
-    title: "Ebeano Supermarket - Yaba",
-    distance: "2 km",
-  },
-  {
-    title: "Park 'n' Shop",
-    distance: "1 km",
-  },
-  {
-    title: "Justrite Supermarket",
+    title: "Circle Mall",
     distance: "3 km",
   },
   {
-    title: "ShopRite - Surulere",
+    title: "Novare Mall Sangotedo",
     distance: "5 km",
+  },
+  {
+    title: "The Palms Shopping Mall",
+    distance: "10 km",
+  },
+  {
+    title: "Ebeano Supermarket - Lekki",
+    distance: "8 km",
   },
 ];
 
 const TRANSPORTATION = [
   {
-    title: "Yaba Bus Terminal",
-    distance: "1 km",
-  },
-  {
-    title: "Jibowu Bus Stop",
+    title: "Lekki-Epe Expressway",
     distance: "2 km",
   },
   {
-    title: "Lagos Mainland Railway Station",
-    distance: "3 km",
+    title: "Ajah Bus Stop",
+    distance: "4 km",
+  },
+  {
+    title: "Murtala Muhammed Airport",
+    distance: "35 km",
   },
 ];
 
 const BEACHES = [
   {
     title: "Elegushi Private Beach",
-    distance: "18 km",
+    distance: "3 km",
+  },
+  {
+    title: "Oniru Beach",
+    distance: "12 km",
   },
   {
     title: "Tarkwa Bay Beach",
-    distance: "15 km",
-  },
-  {
-    title: "Bar Beach",
-    distance: "12 km",
+    distance: "20 km",
   },
 ];
 

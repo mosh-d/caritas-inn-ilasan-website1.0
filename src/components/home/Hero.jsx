@@ -195,7 +195,7 @@ export default function HeroSection() {
           className="absolute z-10 flex flex-col gap-[2rem] w-[50vw] max-sm:w-[80vw] top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"
         >
           <h1 className="font-secondary text-6xl font-[900] text-[color:var(--white)] text-center mb-[8rem]">
-            Welcome to Caritas Inn Igbobi
+            Welcome to Caritas Inn Ilasan
           </h1>
           <div data-component="CheckingButtons">
             <ButtonInput

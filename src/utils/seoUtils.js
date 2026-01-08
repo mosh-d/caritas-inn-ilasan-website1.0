@@ -2,11 +2,11 @@ export const generateHotelSchema = (hotelData = {}) => {
   const defaultData = {
     "@context": "https://schema.org",
     "@type": "Hotel",
-    name: "Caritas Inn Igbobi",
+    name: "Caritas Inn Ilasan",
     description:
-      "Luxury hotel accommodation at Yaba, Lagos. Experience comfort and excellent service at Caritas Inn Igbobi.",
-    url: "https://caritasinnigbobi.fivecloverhotels.com",
-    logo: "https://caritasinnigbobi.fivecloverhotels.com/caritas%20logo.webp",
+      "Luxury hotel accommodation at Lekki Phase 2, Lagos. Experience comfort and excellent service at Caritas Inn Ilasan.",
+    url: "https://caritasinnilasan.fivecloverhotels.com",
+    logo: "https://caritasinnilasan.fivecloverhotels.com/caritas%20logo.webp",
     priceRange: "$$",
     starRating: {
       "@type": "Rating",
@@ -15,19 +15,18 @@ export const generateHotelSchema = (hotelData = {}) => {
     },
     address: {
       "@type": "PostalAddress",
-      streetAddress:
-        "Igbobi College Road, Beside First Bank, WAEC Bus-stop, Yaba",
+      streetAddress: "2, Howard Edafe Street, Ilasan, Lekki Phase 2",
       addressLocality: "Lagos",
       postalCode: "100001",
       addressCountry: "NG",
     },
     geo: {
       "@type": "GeoCoordinates",
-      latitude: "6.521371272421725",
-      longitude: "3.3715264111270296",
+      latitude: "6.431359668871449",
+      longitude: "3.5022371276345114",
     },
-    telephone: "+2348126955544",
-    email: "info@caritasinnigbobihotel.com",
+    telephone: "+2347042798946",
+    email: "info@caritasinnilasanhotel.com",
     sameAs: [
       "https://www.facebook.com/RingrubyHotel?_rdc=1&_rdr#",
       "https://www.instagram.com/ringruby_hotel/",
@@ -61,13 +60,13 @@ export const generateBreadcrumbSchema = (items = []) => {
       "@type": "ListItem",
       position: 1,
       name: "Home",
-      item: "https://caritasinnigbobi.fivecloverhotels.com",
+      item: "https://caritasinnilasan.fivecloverhotels.com",
     },
     {
       "@type": "ListItem",
       position: 2,
       name: "Rooms",
-      item: "https://caritasinnigbobi.fivecloverhotels.com/rooms",
+      item: "https://caritasinnilasan.fivecloverhotels.com/rooms",
     },
   ];
 
