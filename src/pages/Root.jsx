@@ -7,6 +7,7 @@ import axios from "axios";
 import { generateHotelSchema } from "../utils/seoUtils";
 import SEO from "../components/seo/SEO";
 import SafeHelmet from "../components/seo/SafeHelmet";
+import SchemaMarkup from "../components/shared/SchemaMarkup";
 
 const API_BASE_URL = "https://five-clover-shared-backend.onrender.com";
 
@@ -265,45 +266,8 @@ export default function RootLayout() {
         <meta property="og:url" content={metadata.url} />
         <meta property="og:type" content={metadata.type} />
         <meta property="og:image" content={metadata.image} />
-        <script type="application/ld+json">
-          {JSON.stringify({
-            "@context": "https://schema.org",
-            "@type": "Hotel",
-            name: "Caritas Inn Ilasan",
-            description:
-              "Experience luxury and comfort at Caritas Inn Ilasan. Book your stay at our premium hotel in Lekki Phase 2, Lagos.",
-            image:
-              "https://caritasinnilasan.fivecloverhotels.com/caritas%20logo.webp",
-            url: "https://caritasinnilasan.fivecloverhotels.com",
-            address: {
-              "@type": "PostalAddress",
-              streetAddress: "2, Howard Edafe Street, Ilasan, Lekki Phase 2",
-              addressLocality: "Lekki",
-              addressRegion: "Lagos",
-              postalCode: "100001",
-              addressCountry: "NG",
-            },
-            geo: {
-              "@type": "GeoCoordinates",
-              latitude: 6.431359668871449,
-              longitude: 3.5022371276345114,
-            },
-            priceRange: "₦₦",
-            starRating: {
-              "@type": "Rating",
-              ratingValue: "4.5",
-              bestRating: "5",
-            },
-            telephone: "+2347042798946",
-            email: "info@caritasinnilasanhotel.com",
-            sameAs: [
-              "https://www.facebook.com/RingrubyHotel?_rdc=1&_rdr#",
-              "https://www.instagram.com/ringruby_hotel/",
-              "https://twitter.com/fivecloverhotel",
-            ],
-          })}
-        </script>
       </SafeHelmet>
+      <SchemaMarkup branchId={branchId} />
       <header>{!isHome && <MainNavBar />}</header>
       <main>
         <Outlet context={contextValue} />
