@@ -10,8 +10,8 @@ const ROOM_TYPE_MAP = {
   budget: 10,
   standard: 11,
   superior: 13,
-  executive: 12,
-  deluxe: 14,
+  executive: 14,
+  deluxe: 12,
 };
 
 export default function AdminOverviewPage() {

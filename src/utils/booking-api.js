@@ -69,10 +69,10 @@ export const getRoomTypeId = (roomTypeName) => {
     Standard: 11, // Fallback
     "Superior Suite": 13,
     Superior: 13, // Fallback
-    "Executive Suite": 12,
-    Executive: 12, // Fallback
-    "Deluxe Suite": 14,
-    Deluxe: 14, // Fallback
+    "Executive Suite": 14,
+    Executive: 14, // Fallback
+    "Deluxe Suite": 12,
+    Deluxe: 12, // Fallback
   };
 
   console.log("getRoomTypeId called with:", roomTypeName);
