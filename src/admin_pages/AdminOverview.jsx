@@ -9,8 +9,8 @@ const API_BASE_URL = "https://five-clover-shared-backend.onrender.com";
 const ROOM_TYPE_MAP = {
   budget: 10,
   standard: 11,
-  superior: 12,
-  executive: 13,
+  superior: 13,
+  executive: 12,
   deluxe: 14,
 };
 
