@@ -48,7 +48,7 @@ import MobileGallery20 from "../../assets/mobile-gallery/gallery-20.jpg";
 export default function GallerySection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
-  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+  const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 640 : false);
 
   // Update mobile state on window resize
   useEffect(() => {
