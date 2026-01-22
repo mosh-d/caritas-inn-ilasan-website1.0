@@ -40,6 +40,19 @@ import deluxeRoomImage from "../../assets/room-images/deluxe/deluxe.jpg";
 import deluxeRoomImage2 from "../../assets/room-images/deluxe/deluxe-2.jpg";
 import deluxeRoomImage3 from "../../assets/room-images/deluxe/deluxe-3.jpg";
 
+// Mobile room images
+import mobileBudgetImage from "../../assets/mobile-room-images/budget/budget.jpg";
+import mobileBudgetImage2 from "../../assets/mobile-room-images/budget/budget-2.jpg";
+import mobileStandardImage from "../../assets/mobile-room-images/standard/standard.jpg";
+import mobileStandardImage2 from "../../assets/mobile-room-images/standard/standard-2.jpg";
+import mobileSuperiorImage from "../../assets/mobile-room-images/superior/superior.jpg";
+import mobileSuperiorImage2 from "../../assets/mobile-room-images/superior/superior-2.jpg";
+import mobileExecutiveImage from "../../assets/mobile-room-images/executive/executive.jpg";
+import mobileExecutiveImage2 from "../../assets/mobile-room-images/executive/executive-2.jpg";
+import mobileDeluxeImage from "../../assets/mobile-room-images/deluxe/deluxe.jpg";
+import mobileDeluxeImage2 from "../../assets/mobile-room-images/deluxe/deluxe-2.jpg";
+import mobileDeluxeImage3 from "../../assets/mobile-room-images/deluxe/deluxe-3.jpg";
+
 // budget room images
 const budgetRoomImages = [budgetRoomImage, budgetRoomImage2];
 
@@ -55,40 +68,31 @@ const executiveRoomImages = [executiveRoomImage, executiveRoomImage2];
 // deluxe room images
 const deluxeRoomImages = [deluxeRoomImage, deluxeRoomImage2, deluxeRoomImage3];
 
-// Room type to gallery images mapping
-const roomGalleryImages = {
-  "Budget Suite": budgetRoomImages,
-  Budget: budgetRoomImages, // Fallback
-  "Standard Suite": standardRoomImages,
-  Standard: standardRoomImages, // Fallback
-  "Superior Suite": superiorRoomImages,
-  Superior: superiorRoomImages, // Fallback
-  "Executive Suite": executiveRoomImages,
-  Executive: executiveRoomImages, // Fallback
-  "Deluxe Suite": deluxeRoomImages,
-  Deluxe: deluxeRoomImages, // Fallback
-};
+// Mobile budget room images
+const mobileBudgetImages = [mobileBudgetImage, mobileBudgetImage2];
 
-// Room type to image mapping
-const roomTypeImages = {
-  "Budget Suite": budgetRoomImage,
-  Budget: budgetRoomImage, // Fallback
-  "Standard Suite": standardRoomImage,
-  Standard: standardRoomImage, // Fallback
-  "Superior Suite": superiorRoomImage,
-  Superior: superiorRoomImage, // Fallback
-  "Executive Suite": executiveRoomImage,
-  Executive: executiveRoomImage, // Fallback
-  "Deluxe Suite": deluxeRoomImage,
-  Deluxe: deluxeRoomImage, // Fallback
-};
+// Mobile standard room images
+const mobileStandardImages = [mobileStandardImage, mobileStandardImage2];
+
+// Mobile superior room images
+const mobileSuperiorImages = [mobileSuperiorImage, mobileSuperiorImage2];
+
+// Mobile executive room images
+const mobileExecutiveImages = [mobileExecutiveImage, mobileExecutiveImage2];
+
+// Mobile deluxe room images
+const mobileDeluxeImages = [
+  mobileDeluxeImage,
+  mobileDeluxeImage2,
+  mobileDeluxeImage3,
+];
 
 const useSharedContext = () => {
   const context = useOutletContext();
   if (!context) {
     console.error("No context available in AvailableRoomsSection");
     throw new Error(
-      "Component must be used within a layout providing shared context"
+      "Component must be used within a layout providing shared context",
     );
   }
   return context;
@@ -129,6 +133,52 @@ export default function AvailableRoomsSection() {
   const [selectedRooms, setSelectedRooms] = useState({});
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [currentGalleryImages, setCurrentGalleryImages] = useState([]);
+  const [isMobile, setIsMobile] = useState(window.innerWidth < 640);
+
+  useEffect(() => {
+    const handleResize = () => setIsMobile(window.innerWidth < 640);
+    window.addEventListener("resize", handleResize);
+    return () => window.removeEventListener("resize", handleResize);
+  }, []);
+
+  const desktopRoomGalleryImages = {
+    "Budget Suite": budgetRoomImages,
+    "Standard Suite": standardRoomImages,
+    "Deluxe Suite": deluxeRoomImages,
+    Superior: superiorRoomImages,
+    Executive: executiveRoomImages,
+  };
+
+  const mobileRoomGalleryImages = {
+    "Budget Suite": mobileBudgetImages,
+    "Standard Suite": mobileStandardImages,
+    "Deluxe Suite": mobileDeluxeImages,
+    Superior: mobileSuperiorImages,
+    Executive: mobileExecutiveImages,
+  };
+
+  const desktopRoomTypeImages = {
+    "Budget Suite": budgetRoomImage,
+    "Standard Suite": standardRoomImage,
+    "Deluxe Suite": deluxeRoomImage,
+    Superior: superiorRoomImage,
+    Executive: executiveRoomImage,
+  };
+
+  const mobileRoomTypeImages = {
+    "Budget Suite": mobileBudgetImage,
+    "Standard Suite": mobileStandardImage,
+    "Deluxe Suite": mobileDeluxeImage,
+    Superior: mobileSuperiorImage,
+    Executive: mobileExecutiveImage,
+  };
+
+  const roomGalleryImages = isMobile
+    ? mobileRoomGalleryImages
+    : desktopRoomGalleryImages;
+  const roomPrimaryImages = isMobile
+    ? mobileRoomTypeImages
+    : desktopRoomTypeImages;
 
   const handleViewImages = (images) => {
     if (!images || images.length === 0) return;
@@ -210,7 +260,7 @@ export default function AvailableRoomsSection() {
     setNumberOfRooms(selectedRoomCount.toString());
     updateTotalPayment(
       room.room_type_name,
-      selectedRoomCount // Just pass the number of rooms, not the total price
+      selectedRoomCount, // Just pass the number of rooms, not the total price
     );
     // Scroll to top before navigating
     window.scrollTo(0, 0);
@@ -315,7 +365,8 @@ export default function AvailableRoomsSection() {
                   className="flex flex-col p-4 border border-[color:var(--background-color)] border-1 bg-cover bg-center relative"
                   style={{
                     backgroundImage: `linear-gradient(to bottom, hsla(359, 50%, 7%, .85), hsla(359, 50%, 7%, .85)), url(${
-                      roomTypeImages[room.room_type_name] || standardRoomImage
+                      roomPrimaryImages[room.room_type_name] ||
+                      standardRoomImage
                     })`,
                     // backgroundBlendMode: 'multiply'
                   }}
@@ -329,7 +380,7 @@ export default function AvailableRoomsSection() {
                         className="text-[color:var(--emphasis)] text-xl cursor-pointer border-b py-[.5rem]"
                         onClick={() =>
                           handleViewImages(
-                            roomGalleryImages[room.room_type_name]
+                            roomGalleryImages[room.room_type_name],
                           )
                         }
                       >
@@ -344,7 +395,7 @@ export default function AvailableRoomsSection() {
                 <td className="p-4 border border-[color:var(--text-color)]/20">
                   {renderCapacityIcons(
                     room.adult_capacity,
-                    room.child_capacity
+                    room.child_capacity,
                   )}
                 </td>
                 <td className="p-4 border border-[color:var(--text-color)]/20">
@@ -420,7 +471,7 @@ export default function AvailableRoomsSection() {
             className="bg-cover bg-center relative text-[color:var(--white)] border border-[color:var(--white)] rounded-lg overflow-hidden"
             style={{
               backgroundImage: `linear-gradient(to bottom, hsla(359, 50%, 7%, .9), hsla(359, 50%, 7%, .9)), url(${
-                roomTypeImages[room.room_type_name] || standardRoomImage
+                roomPrimaryImages[room.room_type_name] || standardRoomImage
               })`,
             }}
           >
@@ -459,7 +510,7 @@ export default function AvailableRoomsSection() {
                 <div className="flex items-center gap-4">
                   {renderCapacityIcons(
                     room.adult_capacity,
-                    room.child_capacity
+                    room.child_capacity,
                   )}
                 </div>
               </div>
