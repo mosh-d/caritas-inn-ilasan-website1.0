@@ -11,7 +11,7 @@ const API_BASE_URL = "https://five-clover-shared-backend.onrender.com";
 // ========================================
 // Set to 'true' to enable maintenance modal (blocks all admin interactions)
 // Set to 'false' to disable maintenance modal (normal operation)
-const MAINTENANCE_MODE = false; // ← Change this to true/false
+const MAINTENANCE_MODE = true; // ← Change this to true/false
 // ========================================
 
 const ROOM_TYPE_MAP = {
