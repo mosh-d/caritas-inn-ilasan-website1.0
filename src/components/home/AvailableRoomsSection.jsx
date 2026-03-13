@@ -136,12 +136,14 @@ export default function AvailableRoomsSection() {
   const [currentGalleryImages, setCurrentGalleryImages] = useState([]);
   const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 640 : false);
 
+  // Update mobile state on window resize
   useEffect(() => {
     const handleResize = () => setIsMobile(window.innerWidth < 640);
     window.addEventListener("resize", handleResize);
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
+  // Room type to gallery images mapping (Desktop)
   const desktopRoomGalleryImages = {
     "Budget Suite": budgetRoomImages,
     "Standard Suite": standardRoomImages,
@@ -150,6 +152,7 @@ export default function AvailableRoomsSection() {
     Executive: executiveRoomImages,
   };
 
+  // Room type to gallery images mapping (Mobile)
   const mobileRoomGalleryImages = {
     "Budget Suite": mobileBudgetImages,
     "Standard Suite": mobileStandardImages,
@@ -158,6 +161,7 @@ export default function AvailableRoomsSection() {
     Executive: mobileExecutiveImages,
   };
 
+  // Room type to primary image mapping (Desktop)
   const desktopRoomTypeImages = {
     "Budget Suite": budgetRoomImage,
     "Standard Suite": standardRoomImage,
@@ -166,6 +170,7 @@ export default function AvailableRoomsSection() {
     Executive: executiveRoomImage,
   };
 
+  // Room type to primary image mapping (Mobile)
   const mobileRoomTypeImages = {
     "Budget Suite": mobileBudgetImage,
     "Standard Suite": mobileStandardImage,
@@ -174,6 +179,7 @@ export default function AvailableRoomsSection() {
     Executive: mobileExecutiveImage,
   };
 
+  // Select appropriate mappings based on screen size
   const roomGalleryImages = isMobile
     ? mobileRoomGalleryImages
     : desktopRoomGalleryImages;

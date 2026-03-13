@@ -55,7 +55,7 @@ export default function AdminOverviewPage() {
 
   // WebSocket handler - refetch data when rooms are updated (with dual fetch for reliability)
   const handleRoomsUpdated = useCallback((data) => {
-    console.log(' [AdminOverview] WebSocket update received at:', new Date().toISOString());
+    console.log('� [AdminOverview] WebSocket update received at:', new Date().toISOString());
     console.log('📡 [AdminOverview] WebSocket data:', data);
     
     // Only refresh if not currently editing to prevent interference
