@@ -229,7 +229,7 @@ export default function AvailableRoomsSection() {
       }
     } catch (err) {
       console.error("Error fetching room data:", err);
-      setError("Failed to load room data. Please try again later.");
+      setError("Failed to load room data. Please refresh the page or try again later.");
     } finally {
       setLoading(false);
     }
