@@ -181,26 +181,26 @@ export default function Footer() {
               >
                 Five Clover
               </div>
-              <div
+               <div
                 data-component="HotelLinks"
                 className="flex flex-col gap-[1rem] max-md:text-center"
               >
                 <a
-                  href="https://fivecloverhotelmonastery.com/"
+                  href="https://www.monastery.fivecloverhotels.com/"
                   target="_blank"
                   className="text-2xl"
                 >
                   Monastry Road
                 </a>
                 <a
-                  href="https://fivecloverhotelabijo.com/"
+                  href="https://www.abijo.fivecloverhotels.com/"
                   target="_blank"
                   className="text-2xl"
                 >
                   Abijo, GRA
                 </a>
                 <a
-                  href="https://fivecloverilupeju.fivecloverhotels.com/"
+                  href="https://www.ilupeju.fivecloverhotels.com/"
                   target="_blank"
                   className="text-2xl"
                 >
