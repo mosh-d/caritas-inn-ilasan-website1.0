@@ -62,6 +62,18 @@ export default function AdminNavBar() {
               BOOKINGS
             </NavLink>
           </li>
+          <li className="text-3xl font-bold text-[color:var(--black)]">
+            <NavLink
+              to="/admin/rooms"
+              className={({ isActive }) =>
+                isActive
+                  ? "text-[color:var(--emphasis)] font-black border-b-[3px] border-[color:var(--emphasis)]"
+                  : ""
+              }
+            >
+              ROOMS
+            </NavLink>
+          </li>
         </ul>
       </nav>
 

@@ -76,6 +76,21 @@ export default function AdminMobileMenu({ isOpen, onClose }) {
                 BOOKINGS
               </NavLink>
             </li>
+            <li>
+              <NavLink
+                to="/admin/rooms"
+                onClick={onClose}
+                className={({ isActive }) =>
+                  `block py-2 cursor-pointer ${
+                    isActive
+                      ? "text-[color:var(--emphasis)] font-bold"
+                      : "text-gray-800"
+                  }`
+                }
+              >
+                ROOMS
+              </NavLink>
+            </li>
           </ul>
         </nav>
       </div>
