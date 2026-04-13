@@ -1,120 +1,84 @@
-import { createContext, useContext, useEffect, useRef, useState } from 'react';
+import { createContext, useContext, useEffect, useRef, useState, useCallback } from 'react';
 import { io } from 'socket.io-client';
 import axios from 'axios';
 
 const WebSocketContext = createContext(null);
 
-const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
+const PRODUCTION_URL = import.meta.env.VITE_BACKEND_URL || "https://five-clover-shared-backend.onrender.com";
 const LOCAL_URL = "http://localhost:3000";
 const BRANCH_ID = import.meta.env.VITE_BRANCH_ID || '4';
 
-// Determine WebSocket URL based on environment with same logic as API calls
-let SOCKET_URL = PRODUCTION_URL;
-
-const initializeSocketUrl = async () => {
-  // Skip localhost test in production builds
-  if (import.meta.env.PROD) {
-    console.log("📦 WebSocket: Production build - using production server");
-    SOCKET_URL = PRODUCTION_URL;
-    return;
-  }
-
-  // Only test localhost connection in development
-  try {
-    const response = await axios.get(LOCAL_URL, {
-      timeout: 1000,
-      validateStatus: () => true,
-    });
-    if (response.status) {
-      console.log("✅ WebSocket: Connected to local development server");
-      SOCKET_URL = LOCAL_URL;
-      return;
-    }
-  } catch (error) {
-    console.log("⚠️ WebSocket: Local server not available, using production");
-  }
-  SOCKET_URL = PRODUCTION_URL;
-};
-
-// Initialize the socket URL
-initializeSocketUrl();
-
 function WebSocketProvider({ children }) {
   const socketRef = useRef(null);
-  const listenersRef = useRef(new Set());
+  const roomListenersRef = useRef(new Set());
+  const reservationListenersRef = useRef(new Set());
   const [isConnected, setIsConnected] = useState(false);
 
   useEffect(() => {
     const initializeConnection = async () => {
-      await initializeSocketUrl();
-      console.log('🔌 [WebSocketProvider] Initializing single WebSocket connection to:', SOCKET_URL);
-      console.log('📍 [WebSocketProvider] Branch ID:', BRANCH_ID);
+      // Determine URL: priority to local in dev, else production
+      let socketUrl = PRODUCTION_URL;
+      
+      if (!import.meta.env.PROD) {
+        try {
+          const response = await axios.get(LOCAL_URL, { timeout: 800, validateStatus: () => true });
+          if (response.status) socketUrl = LOCAL_URL;
+        } catch (e) {
+          console.log("WebSocket: Local server not available, using production");
+        }
+      }
 
-      // Create single socket instance
-      socketRef.current = io(SOCKET_URL, {
+      console.log('🔌 [WebSocketProvider] Connecting to:', socketUrl);
+
+      socketRef.current = io(socketUrl, {
         transports: ['websocket', 'polling'],
         reconnection: true,
-        reconnectionDelay: 1000,
-        reconnectionDelayMax: 5000,
-        reconnectionAttempts: Infinity,
+        withCredentials: true,
       });
 
       socketRef.current.on('connect', () => {
-        console.log('✅ [WebSocketProvider] WebSocket connected:', socketRef.current.id);
+        console.log('✅ [WebSocketProvider] Connected:', socketRef.current.id);
         setIsConnected(true);
       });
 
       socketRef.current.on('disconnect', (reason) => {
-        console.log('❌ [WebSocketProvider] WebSocket disconnected:', reason);
+        console.log('❌ [WebSocketProvider] Disconnected:', reason);
         setIsConnected(false);
       });
 
-      socketRef.current.on('connect_error', (error) => {
-        console.error('❌ [WebSocketProvider] Connection error:', error.message);
-        setIsConnected(false);
-      });
-
-      // Listen for rooms_updated events
+      // Handle rooms_updated
       socketRef.current.on('rooms_updated', (data) => {
-        console.log('📢 [WebSocketProvider] Rooms updated event received:', data);
-        
-        if (data.branch_id === parseInt(BRANCH_ID)) {
-          console.log(`✅ [WebSocketProvider] Update is for our branch (${BRANCH_ID}), notifying ${listenersRef.current.size} listeners...`);
-          
-          // Notify all registered listeners
-          listenersRef.current.forEach(callback => {
-            try {
-              callback(data);
-            } catch (error) {
-              console.error('Error in WebSocket listener:', error);
-            }
+        console.log('📢 [WebSocketProvider] Rooms updated:', data);
+        if (Number(data.branch_id) === Number(BRANCH_ID)) {
+          roomListenersRef.current.forEach(callback => {
+            try { callback(data); } catch (e) { console.error(e); }
           });
-        } else {
-          console.log(`ℹ️ [WebSocketProvider] Update is for different branch (${data.branch_id}), ignoring...`);
+        }
+      });
+
+      // Handle new_reservation
+      socketRef.current.on('new_reservation', (data) => {
+        console.log('🔔 [WebSocketProvider] New reservation:', data);
+        if (Number(data.branch_id) === Number(BRANCH_ID)) {
+          reservationListenersRef.current.forEach(callback => {
+            try { callback(data); } catch (e) { console.error(e); }
+          });
         }
       });
     };
 
     initializeConnection();
 
-    // Cleanup on unmount
     return () => {
-      if (socketRef.current) {
-        console.log('🔌 [WebSocketProvider] Disconnecting WebSocket');
-        socketRef.current.disconnect();
-      }
+      if (socketRef.current) socketRef.current.disconnect();
     };
   }, []);
 
-  const subscribe = (callback) => {
-    console.log('➕ [WebSocketProvider] Adding listener, total:', listenersRef.current.size + 1);
-    listenersRef.current.add(callback);
-    
-    return () => {
-      console.log('➖ [WebSocketProvider] Removing listener, total:', listenersRef.current.size - 1);
-      listenersRef.current.delete(callback);
-    };
-  };
+  const subscribe = useCallback((callback, type = 'rooms') => {
+    const targetSet = type === 'reservations' ? reservationListenersRef.current : roomListenersRef.current;
+    targetSet.add(callback);
+    return () => targetSet.delete(callback);
+  }, []);
 
   return (
     <WebSocketContext.Provider value={{ isConnected, subscribe }}>
@@ -131,5 +95,4 @@ function useWebSocketContext() {
   return context;
 }
 
-// eslint-disable-next-line react-refresh/only-export-components
 export { WebSocketProvider, useWebSocketContext };

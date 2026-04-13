@@ -54,42 +54,19 @@ export default function AdminOverviewPage() {
   }, [roomType]);
 
    // WebSocket handler - refetch data when rooms are updated (with dual fetch for reliability)
+    // WebSocket handler - refetch data instantly
+    // WebSocket handler - refetch data instantly
+    // WebSocket handler - refetch data instantly
   const handleRoomsUpdated = useCallback((data) => {
-    console.log(' [AdminOverview] WebSocket update received at:', new Date().toISOString());
-    console.log('📡 [AdminOverview] WebSocket data:', data);
-    
-    // Only refresh if not currently editing to prevent interference
-    if (!isEditing) {
-      // First fetch after 2 seconds (immediate response)
-      setTimeout(() => {
-        console.log('🔄 [AdminOverview] Starting first fetch...');
-        loadRoomData(false);
-        console.log('🔄 [AdminOverview] First fetch triggered');
-      }, 2000);
-      
-      // Second verification fetch after 5 seconds (ensure consistency)
-      setTimeout(() => {
-        console.log('🔄 [AdminOverview] Starting verification fetch...');
-        loadRoomData(false);
-        console.log('🔄 [AdminOverview] Verification fetch triggered');
-      }, 6000);
-
-      // Final verification fetch after 10 seconds (ensure consistency)
-      setTimeout(() => {
-        console.log('🔄 [AdminOverview] Starting verification fetch...');
-        loadRoomData(false);
-        console.log('🔄 [AdminOverview] Verification fetch triggered');
-      }, 10000);
-    } else {
-      console.log('⏸️ [AdminOverview] Skipping refresh - user is currently editing');
-    }
+    console.log('📡 [WebSocket] Update received:', data);
+    if (!isEditing) loadRoomData(false);
   }, [loadRoomData, isEditing]);
 
   // Subscribe to WebSocket updates
   const { subscribe } = useWebSocketContext();
   
   useEffect(() => {
-    const unsubscribe = subscribe(handleRoomsUpdated);
+    const unsubscribe = subscribe(handleRoomsUpdated, 'rooms');
     return unsubscribe;
   }, [handleRoomsUpdated, subscribe]);
 
@@ -117,7 +94,7 @@ export default function AdminOverviewPage() {
     loadRoomData(true);
     checkMaintenanceMode(); // Initial check
     
-    const maintenanceInterval = setInterval(() => checkMaintenanceMode(), 30000);
+    const maintenanceInterval = setInterval(() => checkMaintenanceMode(), 15000);
     
     return () => {
       clearInterval(maintenanceInterval);
