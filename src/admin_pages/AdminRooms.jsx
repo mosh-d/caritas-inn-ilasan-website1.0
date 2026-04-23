@@ -8,7 +8,7 @@ import { useWebSocketContext } from "../context/WebSocketContext";
 
 const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
 
-let API_BASE_URL = import.meta.env.VITE_BACKEND_URL || PRODUCTION_URL;
+let API_BASE_URL = PRODUCTION_URL;
 
 // ─── Ilasan branch_id = 4 (Caritas Inn Ilasan) ───────────────────────────────
 // Source of truth: auth.js, room-data.js, WebSocketContext.jsx all use BRANCH_ID = 4
