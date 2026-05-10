@@ -17,7 +17,7 @@ export default function Footer() {
     <>
       <div
         data-component="Footer"
-        className="text-[color:var(--footer-text-color)] bg-[color:var(--background-color-2)] px-24 md:px-12 lg:px-[12rem] py-12 md:py-[6rem] flex flex-col gap-[6rem] md:gap-[6rem] justify-center items-center"
+        className="text-[color:var(--footer-text-color)] bg-[color:var(--background-color-2)] px-24 md:px-12 lg:px-[12rem] max-sm:px-[4rem] py-12 md:py-[6rem] max-sm:py-[4rem] flex flex-col gap-[6rem] md:gap-[6rem] justify-center items-center"
       >
         <Logo />
         <div
@@ -271,7 +271,7 @@ export default function Footer() {
                   target="_blank"
                   className="text-2xl"
                 >
-                  Bateye Road
+                  Ladipo Bateye, Ikeja GRA
                 </a>
                 <a
                   href="https://www.unitedestate.ringrubyhotel.com/"

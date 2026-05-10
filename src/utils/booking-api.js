@@ -36,22 +36,3 @@ export const createReservation = async (reservationData) => {
   }
 };
 
-export const getRoomTypeId = (roomTypeName) => {
-  const roomTypeMap = {
-    "Budget Suite": 10,
-    Budget: 10, // Fallback
-    "Standard Suite": 11,
-    Standard: 11, // Fallback
-    "Superior Suite": 13,
-    Superior: 13, // Fallback
-    "Executive Suite": 14,
-    Executive: 14, // Fallback
-    "Deluxe Suite": 12,
-    Deluxe: 12, // Fallback
-  };
-
-  console.log("getRoomTypeId called with:", roomTypeName);
-  console.log("Mapped to ID:", roomTypeMap[roomTypeName]);
-
-  return roomTypeMap[roomTypeName] || null;
-};
