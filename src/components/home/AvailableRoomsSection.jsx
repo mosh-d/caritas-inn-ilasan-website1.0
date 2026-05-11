@@ -33,11 +33,11 @@ import budgetRoomImage from "../../assets/room-images/budget/budget.jpg";
 import budgetRoomImage2 from "../../assets/room-images/budget/budget-2.jpg";
 import standardRoomImage from "../../assets/room-images/standard/standard.jpg";
 import standardRoomImage2 from "../../assets/room-images/standard/standard-2.jpg";
-// import superiorRoomImage from "../../assets/room-images/superior/superior.jpg";
+import superiorRoomImage from "../../assets/room-images/superior/superior.jpg";
 // import superiorRoomImage2 from "../../assets/room-images/superior/superior-2.jpg";
 import superiorRoomImage3 from "../../assets/room-images/superior/superior-3.jpg";
 import executiveRoomImage from "../../assets/room-images/executive/executive.jpg";
-// import executiveRoomImage2 from "../../assets/room-images/executive/executive-2.jpg";
+import executiveRoomImage2 from "../../assets/room-images/executive/executive-2.jpg";
 // import deluxeRoomImage from "../../assets/room-images/deluxe/deluxe.jpg";
 import deluxeRoomImage2 from "../../assets/room-images/deluxe/deluxe-2.jpg";
 import deluxeRoomImage3 from "../../assets/room-images/deluxe/deluxe-3.jpg";
@@ -62,10 +62,10 @@ const budgetRoomImages = [budgetRoomImage, budgetRoomImage2];
 const standardRoomImages = [standardRoomImage, standardRoomImage2];
 
 // superior room images
-const superiorRoomImages = [/* superiorRoomImage */, /* superiorRoomImage2 */, superiorRoomImage3];
+const superiorRoomImages = [superiorRoomImage, /* superiorRoomImage2 */, superiorRoomImage3];
 
 // executive room images
-const executiveRoomImages = [executiveRoomImage, /* executiveRoomImage2 */];
+const executiveRoomImages = [executiveRoomImage, executiveRoomImage2];
 
 // deluxe room images
 const deluxeRoomImages = [/* deluxeRoomImage */, deluxeRoomImage2, deluxeRoomImage3];
@@ -188,10 +188,12 @@ export default function AvailableRoomsSection() {
   const handleViewImages = (images) => {
     if (!images || images.length === 0) return;
 
-    const formattedImages = images.map((img, index) => ({
-      src: img,
-      alt: `Room Image ${index + 1}`,
-    }));
+    const formattedImages = images
+      .filter(img => img !== undefined)
+      .map((img, index) => ({
+        src: img,
+        alt: `Room Image ${index + 1}`,
+      }));
     setCurrentGalleryImages(formattedImages);
     setIsGalleryOpen(true);
   };
