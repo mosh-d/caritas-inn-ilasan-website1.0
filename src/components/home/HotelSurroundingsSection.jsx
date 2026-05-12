@@ -11,73 +11,73 @@ import beaches from "../../assets/hotel-surroundings/beaches.webp";
 
 const TOP_ATTRACTIONS = [
   {
-    title: "Elegushi Beach",
+    title: "Lekki Conservation Centre",
     distance: "3 km",
   },
   {
-    title: "Novare Mall Sangotedo",
+    title: "Lekki Phase 1 Gate",
+    distance: "2 km",
+  },
+  {
+    title: "Ikate Shopping Complex",
+    distance: "1.5 km",
+  },
+  {
+    title: "Lekki Lagoon Bridge",
+    distance: "4 km",
+  },
+  {
+    title: "Admiralty Way, Lekki",
     distance: "5 km",
-  },
-  {
-    title: "La Campagne Tropicana Beach Resort",
-    distance: "8 km",
-  },
-  {
-    title: "Lakowe Lakes Golf Club",
-    distance: "6 km",
-  },
-  {
-    title: "The Palms Shopping Mall",
-    distance: "10 km",
   },
 ];
 
 const SUPERMARKETS = [
   {
-    title: "Circle Mall",
+    title: "Shoprite Lekki",
     distance: "3 km",
   },
   {
-    title: "Novare Mall Sangotedo",
-    distance: "5 km",
+    title: "Ebeano Supermarket - Ikate",
+    distance: "2 km",
   },
   {
-    title: "The Palms Shopping Mall",
-    distance: "10 km",
+    title: "Grand Towers Supermarket",
+    distance: "1.5 km",
   },
   {
-    title: "Ebeano Supermarket - Lekki",
-    distance: "8 km",
+    title: "Just Rite Supermarket - Lekki",
+    distance: "4 km",
   },
 ];
 
 const TRANSPORTATION = [
   {
-    title: "Lekki-Epe Expressway",
-    distance: "2 km",
+    title: "Lekki-Ikate Bus Stop",
+    distance: "1 km",
   },
   {
-    title: "Ajah Bus Stop",
-    distance: "4 km",
+    title: "Lekki Phase 1 Bus Terminal",
+    distance: "3 km",
   },
   {
-    title: "Murtala Muhammed Airport",
-    distance: "35 km",
+    title: "Ikoyi Link Bridge",
+    distance: "8 km",
   },
 ];
 
 const BEACHES = [
   {
     title: "Elegushi Private Beach",
-    distance: "3 km",
-  },
-  {
-    title: "Oniru Beach",
     distance: "12 km",
   },
   {
-    title: "Tarkwa Bay Beach",
-    distance: "20 km",
+    title: "Landmark Beach",
+    distance: "15 km",
+  },
+  {
+    title: "Atican Beach",
+    distance: "18 km",
   },
 ];
 
