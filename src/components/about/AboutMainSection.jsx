@@ -67,7 +67,7 @@ export default function AboutMainSection() {
                 Experience Tranquil Stays with Unmatched Security
               </h1>
               <p className="text-3xl">
-                Caritas Inn is a modern hotel located in the peaceful Lekki
+                Caritas Inn is a modern hotel located in the peaceful Lekki Phase 2
                 area. We ensure a secure environment with advanced surveillance
                 systems and a dedicated team, providing peace of mind throughout
                 your stay. We offer more than just a place to stay; we provide a
