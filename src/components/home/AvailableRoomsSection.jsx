@@ -31,8 +31,6 @@ import { TbAirConditioning, TbFridge } from "react-icons/tb";
 //Room images
 import budgetRoomImage from "../../assets/room-images/budget/budget.jpg";
 import budgetRoomImage2 from "../../assets/room-images/budget/budget-2.jpg";
-import budgetRoomImage3 from "../../assets/room-images/budget/budget-3.jpg";
-import budgetRoomImage4 from "../../assets/room-images/budget/budget-4.jpg";
 import standardRoomImage from "../../assets/room-images/standard/standard.jpg";
 import standardRoomImage2 from "../../assets/room-images/standard/standard-2.jpg";
 import superiorRoomImage from "../../assets/room-images/superior/superior.jpg";
@@ -60,7 +58,7 @@ import mobileDeluxeImage2 from "../../assets/mobile-room-images/deluxe/deluxe-2.
 import mobileDeluxeImage3 from "../../assets/mobile-room-images/deluxe/deluxe-3.jpg";
 
 // budget room images
-const budgetRoomImages = [budgetRoomImage, budgetRoomImage2, budgetRoomImage3, budgetRoomImage4];
+const budgetRoomImages = [budgetRoomImage, budgetRoomImage2];
 
 // standard room images
 const standardRoomImages = [standardRoomImage, standardRoomImage2];
