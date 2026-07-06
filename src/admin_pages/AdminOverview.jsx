@@ -1,15 +1,15 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { fetchRoomDetails, fetchMaintenanceMode } from "../utils/room-data";
 import { useWebSocketContext } from "../context/WebSocketContext";
-import { IoClose } from "react-icons/io5";
+import { IoClose, IoGridOutline } from "react-icons/io5";
 import axios from "axios";
+import { SERVER_BASE_URL } from "../utils/server-config";
 
 import Button from "../components/shared/Button";
-
-const PRODUCTION_URL = "https://five-clover-shared-backend.onrender.com";
+import PageHeading from "../components/shared/PageHeading";
 
 export default function AdminOverviewPage() {
-  const [apiUrl, setApiUrl] = useState(PRODUCTION_URL);
+  const [apiUrl, setApiUrl] = useState(SERVER_BASE_URL);
   const [roomType, setRoomType] = useState("");
   const [roomTypes, setRoomTypes] = useState([]);
   const [roomDetails, setRoomDetails] = useState({
@@ -151,9 +151,7 @@ export default function AdminOverviewPage() {
         className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[4rem]"
       >
         <div className="w-full flex justify-between items-center max-sm:flex-col max-sm:items-start max-sm:gap-4">
-          <h1 className="text-6xl font-secondary font-bold text-[color:var(--black)]">
-            Overview
-          </h1>
+          <PageHeading icon={IoGridOutline}>Overview</PageHeading>
         </div>
 
         <div className="w-full">
