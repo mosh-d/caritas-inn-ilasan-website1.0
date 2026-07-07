@@ -1,6 +1,9 @@
 import { useState, useEffect, useCallback } from "react";
+import { IoMoonOutline } from "react-icons/io5";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import Button from "../components/shared/Button";
+import PageHeading from "../components/shared/PageHeading";
+import { table } from "../components/shared/ui";
 import { runNightAudit, fetchNightAuditHistory } from "../utils/night-audit-api";
 
 const money = (v) =>
@@ -73,7 +76,7 @@ export default function AdminNightAudit() {
   return (
     <div data-component="AdminNightAudit" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
       <div>
-        <h1 className="text-6xl font-secondary font-bold text-[color:var(--black)]">Night Audit</h1>
+        <PageHeading icon={IoMoonOutline}>Night Audit</PageHeading>
         <p className="text-2xl text-[color:var(--text-color)]/60 mt-2">
           Posts nightly room charges to all in-house guest folios.
           Runs automatically at 2am if not triggered manually.
@@ -123,20 +126,21 @@ export default function AdminNightAudit() {
 
             {/* Detail table */}
             {result.details?.length > 0 && (
-              <div className="overflow-x-auto">
-                <table className="min-w-full border-collapse text-2xl mt-2">
+              <div className={`${table.card} mt-2`}>
+                <div className={table.scroll}>
+                <table className={table.el}>
                   <thead>
-                    <tr className="border-b border-[color:var(--text-color)]/25">
-                      <th className="px-6 py-3 text-left">Guest</th>
-                      <th className="px-6 py-3 text-left hidden md:table-cell">Room Type</th>
-                      <th className="px-6 py-3 text-left hidden md:table-cell">Folio</th>
-                      <th className="px-6 py-3 text-right">Charge</th>
-                      <th className="px-6 py-3 text-left">Status</th>
+                    <tr className={table.headRow}>
+                      <th className={table.th}>Guest</th>
+                      <th className={`${table.th} hidden md:table-cell`}>Room Type</th>
+                      <th className={`${table.th} hidden md:table-cell`}>Folio</th>
+                      <th className={`${table.th} text-right!`}>Charge</th>
+                      <th className={table.th}>Status</th>
                     </tr>
                   </thead>
                   <tbody>
                     {result.details.map((d, i) => (
-                      <tr key={i} className="border-b border-[color:var(--text-color)]/25 hover:bg-black/2 transition-colors">
+                      <tr key={i} className={table.row}>
                         <td className="px-6 py-3 font-medium">
                           <div>{d.guest_name}</div>
                           {d.booking_reference && (
@@ -163,6 +167,7 @@ export default function AdminNightAudit() {
                     ))}
                   </tbody>
                 </table>
+                </div>
               </div>
             )}
           </div>
@@ -181,21 +186,22 @@ export default function AdminNightAudit() {
           <p className="text-2xl text-[color:var(--text-color)]/50">No audits have been run yet.</p>
         ) : (
           <>
-            <div className="overflow-x-auto">
-              <table className="min-w-full border-collapse text-2xl">
+            <div className={table.card}>
+              <div className={table.scroll}>
+              <table className={table.el}>
                 <thead>
-                  <tr className="border-b border-[color:var(--text-color)]/25">
-                    <th className="px-6 py-4 text-left">Business Date</th>
-                    <th className="px-6 py-4 text-right hidden md:table-cell">Guests Charged</th>
-                    <th className="px-6 py-4 text-right hidden md:table-cell">Skipped</th>
-                    <th className="px-6 py-4 text-right">Total Posted</th>
-                    <th className="px-6 py-4 text-left hidden md:table-cell">Run At</th>
-                    <th className="px-6 py-4 text-left hidden md:table-cell">Source</th>
+                  <tr className={table.headRow}>
+                    <th className={table.th}>Business Date</th>
+                    <th className={`${table.th} text-right! hidden md:table-cell`}>Guests Charged</th>
+                    <th className={`${table.th} text-right! hidden md:table-cell`}>Skipped</th>
+                    <th className={`${table.th} text-right!`}>Total Posted</th>
+                    <th className={`${table.th} hidden md:table-cell`}>Run At</th>
+                    <th className={`${table.th} hidden md:table-cell`}>Source</th>
                   </tr>
                 </thead>
                 <tbody>
                   {history.map((a) => (
-                    <tr key={a.id} className="border-b border-[color:var(--text-color)]/25 hover:bg-black/2 transition-colors">
+                    <tr key={a.id} className={table.row}>
                       <td className="px-6 py-4 font-bold">{formatDate(a.audit_date)}</td>
                       <td className="px-6 py-4 text-right hidden md:table-cell">{a.rooms_charged}</td>
                       <td className="px-6 py-4 text-right hidden md:table-cell text-[color:var(--text-color)]/60">{a.skipped}</td>
@@ -214,6 +220,7 @@ export default function AdminNightAudit() {
                   ))}
                 </tbody>
               </table>
+              </div>
             </div>
 
             {historyPages > 1 && (

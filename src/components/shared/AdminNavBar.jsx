@@ -44,9 +44,11 @@ export default function AdminNavBar() {
         {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
       </button>
 
-      {/* Desktop Sidebar - Hidden on mobile */}
-      <nav className="hidden md:block h-full">
-        <ul className="flex flex-col px-[1.6rem] py-[3rem] gap-[0.6rem] h-full min-w-[26rem] bg-[color:var(--accent)]/70">
+      {/* Desktop Sidebar - Hidden on mobile. `md:flex` (not block) so the ul
+          stretches to the full height of the layout row even when the page
+          content is shorter than the viewport. */}
+      <nav className="hidden md:flex">
+        <ul className="flex flex-col px-[1.6rem] py-[3rem] gap-[0.6rem] min-w-[26rem] bg-[color:var(--accent)]/70">
           {ADMIN_NAV_ITEMS.map(({ to, label, icon: Icon, end, showAlertBadge }) => (
             <li key={to}>
               <NavLink
