@@ -111,7 +111,7 @@ export default function AdminAlertsPage() {
         <PageHeading
           icon={IoNotificationsOutline}
           badge={total > 0 && (
-            <span className="bg-red-600 text-white text-xl font-bold rounded-full px-4 py-1 min-w-[2.5rem] text-center">
+            <span className="bg-red-600 text-white text-2xl font-bold rounded-full pb-1 pt-2 pl-1.5 pr-1 min-w-[2.5rem] text-center">
               {total}
             </span>
           )}
@@ -133,7 +133,7 @@ export default function AdminAlertsPage() {
             >
               {label}
               {count > 0 && (
-                <span className={`text-sm font-bold rounded-full px-2 py-0.5 min-w-[1.4rem] text-center leading-tight ${
+                <span className={`text-xl font-bold rounded-full pl-2 pr-1 pt-1 pb-.5 min-w-[1.4rem] text-center leading-tight ${
                   tab === key ? "bg-[color:var(--emphasis)] text-white" : "bg-red-600 text-white"
                 }`}>
                   {count}

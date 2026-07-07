@@ -9,7 +9,7 @@ function AlertCountBadge({ count, active }) {
   if (!count) return null;
   return (
     <span
-      className={`ml-auto text-sm font-bold rounded-full px-2 py-0.5 min-w-[2rem] text-center leading-tight ${
+      className={`ml-auto text-2xl font-bold rounded-2xl px-2 pt-1 min-w-[2rem] text-center leading-tight ${
         active ? "bg-white text-[color:var(--emphasis)]" : "bg-red-600 text-white"
       }`}
     >

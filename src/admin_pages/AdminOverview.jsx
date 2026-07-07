@@ -242,7 +242,7 @@ export default function AdminOverviewPage() {
     <>
       <div
         data-component="AdminOverview"
-        className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]"
+        className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[4.5rem]"
       >
         <div className="w-full flex justify-between items-center max-sm:flex-col max-sm:items-start max-sm:gap-4">
           <PageHeading icon={IoGridOutline}>Overview</PageHeading>
@@ -412,22 +412,22 @@ export default function AdminOverviewPage() {
         </div>
 
         {/* ── Room Inventory manual editor (emergencies only) ── */}
-        <div className="w-full">
-          <div className="bg-white p-8 rounded-xl border border-gray-100 shadow-sm flex flex-col gap-6 w-full ">
-            <div className="flex justify-between items-center pb-4 border-b border-gray-300">
-              <h2 className="text-3xl font-bold text-[color:var(--black)]">
-                Room Inventory
-              </h2>
-            </div>
-
+        <div className="w-full flex flex-col gap-4">
+          <div className="flex items-center gap-4 flex-wrap">
+            <h2 className="text-3xl font-bold text-[color:var(--black)]">Room Inventory</h2>
+            <span className="text-lg font-semibold text-red-600 bg-red-50 border border-red-200 rounded-full px-4 pt-1.5 pb-1">
+              Only use manual update for emergencies!
+            </span>
+          </div>
+          <div className="bg-white p-8 rounded-xl border border-[color:var(--text-color)]/10 flex flex-col gap-6 w-full">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-6 bg-gray-50 rounded-xl">
-                <p className="text-2xl font-semibold text-gray-500 mb-1">Room Category</p>
+              <div className="p-6 bg-[color:var(--text-color)]/3 rounded-lg">
+                <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/50 mb-2">Room Category</p>
                 <select
                   value={roomType}
                   onChange={(e) => setRoomType(e.target.value)}
                   disabled={isEditing}
-                  className="w-full text-3xl font-bold bg-transparent border-none focus:ring-0 cursor-pointer"
+                  className="w-full text-3xl font-bold text-[color:var(--black)] bg-transparent border-none focus:ring-0 cursor-pointer"
                 >
                   {roomTypes.map((rt) => (
                     <option key={rt.room_type_id} value={rt.room_type_name}>
@@ -437,8 +437,8 @@ export default function AdminOverviewPage() {
                 </select>
               </div>
 
-              <div className="p-6 bg-gray-50 rounded-xl relative group">
-                <p className="text-2xl font-semibold text-gray-500 mb-1">Available Rooms</p>
+              <div className="p-6 bg-[color:var(--text-color)]/3 rounded-lg relative group">
+                <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/50 mb-2">Available Rooms</p>
                 {isEditing ? (
                   <div className="flex items-center gap-4">
                     <select
@@ -474,7 +474,7 @@ export default function AdminOverviewPage() {
                   </div>
                 ) : (
                   <div className="flex items-center justify-between">
-                    <p className="text-5xl font-bold text-gray-800">
+                    <p className="text-4xl font-bold text-[color:var(--black)]">
                       {roomDetails.totalAvailableRooms}
                     </p>
                     <button
@@ -490,15 +490,13 @@ export default function AdminOverviewPage() {
                 )}
               </div>
 
-              <div className="p-6 bg-gray-50 rounded-xl">
-                <p className="text-2xl font-semibold text-gray-500 mb-1">Max Capacity</p>
-                <p className="text-5xl font-bold text-gray-800">
+              <div className="p-6 bg-[color:var(--text-color)]/3 rounded-lg">
+                <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/50 mb-2">Max Capacity</p>
+                <p className="text-4xl font-bold text-[color:var(--black)]">
                   {roomDetails.maxCapacity}
                 </p>
               </div>
             </div>
-
-            <p className="text-2xl text-red-500">Only use manual update for emergencies!</p>
 
             {updateMessage && (
               <div className={`p-4 rounded-lg text-xl mb-4 ${updateMessage.includes("Failed") ? "bg-red-50 text-red-600" : "bg-green-50 text-green-600"}`}>

@@ -69,7 +69,7 @@ export default function AdminMobileMenu({ isOpen, onClose }) {
                       <span>{label}</span>
                       {showAlertBadge && alertCount > 0 && (
                         <span
-                          className={`ml-auto text-sm font-bold rounded-full px-2 py-0.5 min-w-[2rem] text-center leading-tight ${
+                          className={`ml-auto text-xl font-bold rounded-full px-1 pt-1.5 pb-.7 min-w-[2rem] text-center leading-tight ${
                             isActive ? "bg-white text-[color:var(--emphasis)]" : "bg-red-600 text-white"
                           }`}
                         >
