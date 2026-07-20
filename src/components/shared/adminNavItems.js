@@ -10,6 +10,7 @@ import {
   IoBarChartOutline,
   IoMoonOutline,
   IoNotificationsOutline,
+  IoKeyOutline,
 } from "react-icons/io5";
 
 // Single source of truth for the admin sidebar + mobile menu.
@@ -26,4 +27,5 @@ export const ADMIN_NAV_ITEMS = [
   { to: "/admin/reports", label: "REPORTS", icon: IoBarChartOutline },
   { to: "/admin/night-audit", label: "NIGHT AUDIT", icon: IoMoonOutline },
   { to: "/admin/alerts", label: "ALERTS", icon: IoNotificationsOutline, showAlertBadge: true },
+  { to: "/admin/account", label: "ACCOUNT", icon: IoKeyOutline },
 ];

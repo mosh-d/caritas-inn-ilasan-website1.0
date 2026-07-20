@@ -96,6 +96,27 @@ export const verifyToken = async () => {
   }
 };
 
+// Change a branch-tier password. `target_role` is optional — omit it to
+// change your own password; managers may pass target_role: "receptionist"
+// to reset the receptionist's password using their own current password.
+export const changePassword = async ({ current_password, new_password, target_role }) => {
+  const response = await fetch(`${API_URL}/change-password`, {
+    method: "PATCH",
+    headers: getAuthHeaders(),
+    body: JSON.stringify({
+      current_password,
+      new_password,
+      ...(target_role ? { target_role } : {}),
+    }),
+  });
+
+  const data = await response.json();
+  if (!response.ok) {
+    throw new Error(data.message || "Failed to change password");
+  }
+  return data;
+};
+
 // Logout
 export const logout = () => {
   clearStoredSession();
@@ -138,6 +159,7 @@ export const getStoredAdminUser = () => {
 export const getStoredStaffRole = () =>
   getStoredAdminUser()?.staff_role || null;
 
-export const canManageRoomPrices = () =>
-  getStoredStaffRole() === "manager";
+export const isManager = () => getStoredStaffRole() === "manager";
+
+export const canManageRoomPrices = () => isManager();
 

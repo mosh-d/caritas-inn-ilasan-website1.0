@@ -15,6 +15,9 @@ const STYLES = {
   // Room assignment statuses
   occupied: "bg-green-100 text-green-700",
   released: "bg-gray-100 text-gray-600",
+  // Staff roles
+  manager: "bg-purple-100 text-purple-700",
+  receptionist: "bg-blue-100 text-blue-700",
 };
 
 export default function StatusBadge({ status, className = "" }) {

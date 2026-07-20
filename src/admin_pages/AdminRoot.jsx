@@ -88,9 +88,11 @@ export default function AdminRootLayout() {
     return <Outlet />;
   }
 
-  // Show protected layout for authenticated users
+  // Show protected layout for authenticated users.
+  // h-screen + overflow-hidden pins the shell to the viewport so the sidebar
+  // and the main body scroll independently (each gets its own overflow-y-auto).
   return (
-    <div className="min-h-screen bg-gray-100">
+    <div className="h-screen flex flex-col overflow-hidden bg-gray-100">
       {/* ── New Reservation Notification ── */}
       {hasNewReservation && (
         <div className="fixed top-34 right-6 z-[200] animate-notification">
@@ -112,12 +114,12 @@ export default function AdminRootLayout() {
         </div>
       )}
 
-      <header className="bg-white shadow-sm">
+      <header className="bg-white shadow-sm shrink-0">
         <AdminTopBar />
       </header>
-      <div className="flex min-h-[calc(100vh-4rem)]">
+      <div className="flex flex-1 overflow-hidden">
         <AdminNavBar />
-        <main className="flex-1 overflow-auto p-0 md:p-6">
+        <main className="flex-1 overflow-y-auto p-0 md:p-6">
           <Outlet />
         </main>
       </div>

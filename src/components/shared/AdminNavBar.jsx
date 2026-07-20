@@ -44,11 +44,19 @@ export default function AdminNavBar() {
         {isMenuOpen ? <FiX size={24} /> : <FiMenu size={24} />}
       </button>
 
-      {/* Desktop Sidebar - Hidden on mobile. `md:flex` (not block) so the ul
-          stretches to the full height of the layout row even when the page
-          content is shorter than the viewport. */}
-      <nav className="hidden md:flex">
-        <ul className="flex flex-col px-[1.6rem] py-[3rem] gap-[0.6rem] min-w-[26rem] bg-[color:var(--accent)]/70">
+      {/* Desktop Sidebar - Hidden on mobile. The background lives on <nav>
+          itself (not the <ul>) so it always fills the full sidebar box no
+          matter how tall the item list is relative to the viewport — with
+          the color on the inner <ul>, its height depended on flex-stretch
+          reaching every child correctly, which is what let the last item
+          (e.g. Account) render against the wrong background whenever content
+          height and viewport height were close. `md:flex` lets <nav> stretch
+          to the full height of the layout row even when the page content is
+          shorter than the viewport. The layout row is pinned to the viewport
+          (AdminRoot), so the sidebar stays put while the main body scrolls;
+          overflow-y-auto lets the nav scroll itself if items ever overflow. */}
+      <nav className="hidden md:flex overflow-y-auto shrink-0 bg-[color:var(--accent)]/70">
+        <ul className="flex flex-col px-[1.6rem] py-[3rem] gap-[0.6rem] min-w-[26rem] w-full">
           {ADMIN_NAV_ITEMS.map(({ to, label, icon: Icon, end, showAlertBadge }) => (
             <li key={to}>
               <NavLink
