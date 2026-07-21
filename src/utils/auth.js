@@ -159,6 +159,24 @@ export const getStoredAdminUser = () => {
 export const getStoredStaffRole = () =>
   getStoredAdminUser()?.staff_role || null;
 
+export const getStoredBranch = () => {
+  if (typeof window === "undefined") {
+    return null;
+  }
+
+  const rawBranch = localStorage.getItem(BRANCH_INFO_KEY);
+  if (!rawBranch) {
+    return null;
+  }
+
+  try {
+    return JSON.parse(rawBranch);
+  } catch (error) {
+    console.error("Failed to parse stored branch info:", error);
+    return null;
+  }
+};
+
 export const isManager = () => getStoredStaffRole() === "manager";
 
 export const canManageRoomPrices = () => isManager();

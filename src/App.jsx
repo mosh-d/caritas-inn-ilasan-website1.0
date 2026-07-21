@@ -13,6 +13,7 @@ import AdminOverview from "./admin_pages/AdminOverview";
 // Kept here, commented out, in case we need to fall back to it.
 // import AdminBookings from "./admin_pages/AdminBookings";
 import AdminRooms from "./admin_pages/AdminRooms";
+import AdminRoomChart from "./admin_pages/AdminRoomChart";
 import AdminReservations from "./admin_pages/AdminReservations";
 import AdminGuests from "./admin_pages/AdminGuests";
 import AdminFolios from "./admin_pages/AdminFolios";
@@ -48,6 +49,7 @@ const router = createBrowserRouter([
       { path: "overview", element: <AdminOverview /> },
       // { path: "bookings", element: <AdminBookings /> },
       { path: "rooms", element: <AdminRooms /> },
+      { path: "room-chart", element: <AdminRoomChart /> },
       { path: "reservations", element: <AdminReservations /> },
       { path: "guests", element: <AdminGuests /> },
       { path: "folios", element: <AdminFolios /> },

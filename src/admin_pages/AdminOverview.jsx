@@ -148,7 +148,7 @@ export default function AdminOverviewPage() {
     if (!isEditingRef.current) loadRoomDataRef.current(false);
   }, []);
 
-  const { subscribe } = useWebSocketContext();
+  const { subscribe, isConnected, disconnectedRefreshTick } = useWebSocketContext();
 
   useEffect(() => {
     loadRoomData(true);
@@ -158,22 +158,44 @@ export default function AdminOverviewPage() {
     // Live refresh of the dashboard when bookings or alerts change
     const unsubscribeReservations = subscribe(loadDashboard, 'reservations');
     const unsubscribeAlerts = subscribe(loadDashboard, 'alerts');
-    const roomsInterval = setInterval(() => {
-      if (!isEditingRef.current) {
-        loadRoomData(false);
-      }
-    }, 5000);
+    // Dashboard still gets a slow clock-driven refresh independent of any
+    // data change — e.g. "Arrivals Today" rolls over at midnight with no
+    // underlying mutation to trigger a websocket event. Room data and
+    // maintenance mode don't have that problem (see the isConnected effect
+    // below), so they no longer poll.
     const dashboardInterval = setInterval(loadDashboard, 60000);
-    const maintenanceInterval = setInterval(() => checkMaintenanceMode(), 5000);
     return () => {
       if (unsubscribeRooms) unsubscribeRooms();
       if (unsubscribeReservations) unsubscribeReservations();
       if (unsubscribeAlerts) unsubscribeAlerts();
-      clearInterval(roomsInterval);
       clearInterval(dashboardInterval);
-      clearInterval(maintenanceInterval);
     };
   }, [loadRoomData, loadDashboard, checkMaintenanceMode, handleRoomsUpdated, subscribe]);
+
+  // Re-sync room data + maintenance mode whenever the socket (re)connects.
+  // Socket.IO's default emit has no queue/replay — an event broadcast while
+  // this client is disconnected (network blip, laptop sleep, a backend
+  // redeploy) is gone for good, and the 'connect' handler in
+  // WebSocketContext doesn't refetch anything on its own. This closes that
+  // gap without a fixed-interval poll: it only runs on an actual
+  // connection-state change, which is rare, not every few seconds.
+  useEffect(() => {
+    if (!isConnected) return;
+    if (!isEditingRef.current) loadRoomData(false);
+    checkMaintenanceMode();
+  }, [isConnected, loadRoomData, checkMaintenanceMode]);
+
+  // Fallback: if the socket stays disconnected, keep refreshing via plain
+  // HTTP every 30s anyway (see WebSocketContext.jsx). disconnectedRefreshTick
+  // only ever changes while genuinely disconnected, so no isConnected guard
+  // is needed here — unlike the effect above, this one intentionally does
+  // NOT fire on the initial connect (tick starts at 0 and stays there until
+  // a real outage happens).
+  useEffect(() => {
+    if (disconnectedRefreshTick === 0) return;
+    if (!isEditingRef.current) loadRoomData(false);
+    checkMaintenanceMode();
+  }, [disconnectedRefreshTick, loadRoomData, checkMaintenanceMode]);
 
   const handleUpdateRoomCount = async () => {
     setIsProcessingUpdate(true);

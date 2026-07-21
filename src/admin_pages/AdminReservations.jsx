@@ -5,6 +5,7 @@ import Modal from "../components/shared/Modal";
 import PageHeading from "../components/shared/PageHeading";
 import StatusBadge from "../components/shared/StatusBadge";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
+import RoomAssignmentPicker from "../components/shared/RoomAssignmentPicker";
 import { btn, field, table } from "../components/shared/ui";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import {
@@ -63,7 +64,6 @@ export default function AdminReservationsPage() {
   const [exportEndDate, setExportEndDate] = useState("");
   const [exportStatuses, setExportStatuses] = useState({ active: true, confirmed: true });
 
-  const [newRoomNumber, setNewRoomNumber] = useState("");
   const [assigningRoom, setAssigningRoom] = useState(false);
   const [newCheckOutDate, setNewCheckOutDate] = useState("");
   const [extending, setExtending] = useState(false);
@@ -76,9 +76,18 @@ export default function AdminReservationsPage() {
   const [depositActionLoading, setDepositActionLoading] = useState(null);
 
   const [cancelTarget, setCancelTarget] = useState(null);
+  const [cancelError, setCancelError] = useState("");
   const [confirmingId, setConfirmingId] = useState(null);
+  const [confirmTarget, setConfirmTarget] = useState(null);
+  const [confirmError, setConfirmError] = useState("");
+  const [modalError, setModalError] = useState("");
+  const [actionError, setActionError] = useState("");
 
   const loadReservations = useCallback(async () => {
+    // TEMP DIAGNOSTIC — remove once the "reloads every few seconds" report is
+    // root-caused. Prints exactly what called this, so if it's firing on a
+    // timer we can see it's not from anywhere in this file/its websocket sub.
+    console.trace('[AdminReservations] loadReservations() called');
     try {
       setLoading(true);
       const params = { page, limit };
@@ -127,6 +136,7 @@ export default function AdminReservationsPage() {
     setDeposits([]);
     setDepositForm(EMPTY_DEPOSIT_FORM);
     setDepositError("");
+    setModalError("");
     try {
       const [full, folioResult, depositsResult] = await Promise.all([
         fetchReservationById(reservation.id),
@@ -155,11 +165,13 @@ export default function AdminReservationsPage() {
     setDeposits([]);
     setDepositForm(EMPTY_DEPOSIT_FORM);
     setDepositError("");
+    setModalError("");
   };
 
   const openCancelModal = (reservation) => {
     setCancelTarget(reservation);
     setCancelReason("");
+    setCancelError("");
     setIsCancelOpen(true);
   };
 
@@ -167,6 +179,17 @@ export default function AdminReservationsPage() {
     setIsCancelOpen(false);
     setCancelTarget(null);
     setCancelReason("");
+    setCancelError("");
+  };
+
+  const openConfirmModal = (reservation) => {
+    setConfirmTarget(reservation);
+    setConfirmError("");
+  };
+
+  const closeConfirmModal = () => {
+    setConfirmTarget(null);
+    setConfirmError("");
   };
 
   const handleSaveEdit = async () => {
@@ -187,7 +210,7 @@ export default function AdminReservationsPage() {
       closeDetail();
       loadReservations();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update reservation.");
+      setModalError(err.response?.data?.message || "Failed to update reservation.");
     } finally {
       setSaving(false);
     }
@@ -204,21 +227,23 @@ export default function AdminReservationsPage() {
       if (selectedReservation?.id === cancelTarget.id) closeDetail();
       loadReservations();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to cancel reservation.");
+      setCancelError(err.response?.data?.message || "Failed to cancel reservation.");
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleQuickConfirm = async (reservation) => {
+  const handleQuickConfirm = async () => {
+    if (!confirmTarget) return;
     try {
-      setConfirmingId(reservation.id);
-      await confirmReservation(reservation.id);
+      setConfirmingId(confirmTarget.id);
+      await confirmReservation(confirmTarget.id);
       setSuccessMessage("Reservation confirmed.");
       setTimeout(() => setSuccessMessage(""), 5000);
+      closeConfirmModal();
       loadReservations();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to confirm reservation.");
+      setConfirmError(err.response?.data?.message || "Failed to confirm reservation.");
     } finally {
       setConfirmingId(null);
     }
@@ -238,7 +263,7 @@ export default function AdminReservationsPage() {
       closeDetail();
       loadReservations();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to update no-show status.");
+      setModalError(err.response?.data?.message || "Failed to update no-show status.");
     } finally {
       setActionLoading(false);
     }
@@ -257,7 +282,7 @@ export default function AdminReservationsPage() {
       setSuccessMessage("Folio created.");
       setTimeout(() => setSuccessMessage(""), 5000);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to create folio.");
+      setModalError(err.response?.data?.message || "Failed to create folio.");
     } finally {
       setCreatingFolio(false);
     }
@@ -325,7 +350,7 @@ export default function AdminReservationsPage() {
       closeDetail();
       loadReservations();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to process early checkout.");
+      setModalError(err.response?.data?.message || "Failed to process early checkout.");
     } finally {
       setActionLoading(false);
     }
@@ -341,7 +366,7 @@ export default function AdminReservationsPage() {
       closeDetail();
       loadReservations();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to check in.");
+      setModalError(err.response?.data?.message || "Failed to check in.");
     } finally {
       setActionLoading(false);
     }
@@ -357,23 +382,24 @@ export default function AdminReservationsPage() {
       closeDetail();
       loadReservations();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to check out.");
+      setModalError(err.response?.data?.message || "Failed to check out.");
     } finally {
       setActionLoading(false);
     }
   };
 
-  const handleAssignRoom = async () => {
-    if (!selectedReservation || !newRoomNumber.trim()) return;
+  const handleAssignRoom = async (roomNumbers) => {
+    if (!selectedReservation) return;
     try {
       setAssigningRoom(true);
-      const existing = (selectedReservation.room_assignments || []).map((ra) => ra.room_number);
-      await assignRoom(selectedReservation.id, [...existing, newRoomNumber.trim()]);
+      await assignRoom(selectedReservation.id, roomNumbers);
       const full = await fetchReservationById(selectedReservation.id);
       setSelectedReservation(full);
-      setNewRoomNumber("");
+      loadReservations();
+      setSuccessMessage("Room assignments saved.");
+      setTimeout(() => setSuccessMessage(""), 5000);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to assign room.");
+      setModalError(err.response?.data?.message || "Failed to assign room.");
     } finally {
       setAssigningRoom(false);
     }
@@ -389,7 +415,7 @@ export default function AdminReservationsPage() {
       closeDetail();
       loadReservations();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to extend stay.");
+      setModalError(err.response?.data?.message || "Failed to extend stay.");
     } finally {
       setExtending(false);
     }
@@ -510,7 +536,7 @@ export default function AdminReservationsPage() {
                           <button onClick={() => openDetail(r)} className={btn.rowPrimary}>View</button>
                           {r.status === "hold" && (
                             <button
-                              onClick={() => handleQuickConfirm(r)}
+                              onClick={() => openConfirmModal(r)}
                               disabled={confirmingId === r.id}
                               className={btn.rowSuccess}
                             >
@@ -569,7 +595,11 @@ export default function AdminReservationsPage() {
                 <button onClick={handleEarlyCheckout} disabled={actionLoading} className={btn.danger}>Early Checkout</button>
               )}
               {!res.actual_check_in && canModify && (
-                <button onClick={handleCheckIn} disabled={actionLoading} className={btn.success}>Check In</button>
+                res.status === "confirmed" ? (
+                  <button onClick={handleCheckIn} disabled={actionLoading} className={btn.success}>Check In</button>
+                ) : (
+                  <button disabled title="Awaiting payment — confirm reservation first" className={btn.success}>Check In</button>
+                )
               )}
               {res.actual_check_in && !res.actual_check_out && (
                 <button onClick={handleCheckOut} disabled={actionLoading} className={btn.success}>Check Out</button>
@@ -584,6 +614,10 @@ export default function AdminReservationsPage() {
             <LoadingSpinner size="lg" />
           ) : (
             <>
+              {modalError && (
+                <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{modalError}</p>
+              )}
+
               {/* Stay summary */}
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                 <InfoCard label="Check-In" value={formatDate(res.check_in)} />
@@ -725,23 +759,13 @@ export default function AdminReservationsPage() {
               {canModify && (
                 <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
                   <h3 className="text-2xl font-bold text-[color:var(--black)]">Room Assignments</h3>
-                  {(res.room_assignments || []).length === 0 ? (
-                    <p className="text-xl text-[color:var(--text-color)]/60">No rooms assigned yet.</p>
-                  ) : (
-                    <div className="flex flex-wrap gap-2">
-                      {res.room_assignments.map((ra) => (
-                        <span key={ra.id} className="text-xl bg-[color:var(--text-color)]/5 px-4 py-2 rounded-lg capitalize flex items-center gap-2">
-                          {ra.room_number} <StatusBadge status={ra.status} />
-                        </span>
-                      ))}
-                    </div>
-                  )}
-                  <div className="flex gap-3 flex-nowrap items-center">
-                    <input type="text" placeholder="Room number" value={newRoomNumber} onChange={(e) => setNewRoomNumber(e.target.value)} className={field.input} />
-                    <button onClick={handleAssignRoom} disabled={assigningRoom || !newRoomNumber.trim()} className={`${btn.primary} whitespace-nowrap`}>
-                      {assigningRoom ? "Assigning..." : "Assign Room"}
-                    </button>
-                  </div>
+                  <RoomAssignmentPicker
+                    reservationId={res.id}
+                    roomsBooked={res.rooms_booked}
+                    initialRoomNumbers={(res.room_assignments || []).map((ra) => ra.room_number)}
+                    onSave={handleAssignRoom}
+                    saving={assigningRoom}
+                  />
                 </section>
               )}
 
@@ -783,10 +807,42 @@ export default function AdminReservationsPage() {
             </>
           }
         >
+          {cancelError && (
+            <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{cancelError}</p>
+          )}
+          <p className="text-xl text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3">
+            Are you sure you want to cancel this guest's reservation? Make sure to alert them about the cancellation if you think they might proceed to make payment.
+          </p>
           <div className="flex flex-col gap-2">
             <label className={field.label}>Reason (optional)</label>
             <textarea value={cancelReason} onChange={(e) => setCancelReason(e.target.value)} className={field.textarea} />
           </div>
+        </Modal>
+      )}
+
+      {/* ==== Confirm Reservation Warning Modal ==== */}
+      {confirmTarget && (
+        <Modal
+          onClose={closeConfirmModal}
+          title={`Confirm ${confirmTarget.guest_name || "Reservation"}?`}
+          subtitle="This creates the guest's folio and moves the reservation into Confirmed status."
+          size="sm"
+          zIndex={1100}
+          footer={
+            <>
+              <button onClick={closeConfirmModal} disabled={confirmingId === confirmTarget.id} className={btn.secondary}>Back</button>
+              <button onClick={handleQuickConfirm} disabled={confirmingId === confirmTarget.id} className={btn.success}>
+                {confirmingId === confirmTarget.id ? "Confirming..." : "Yes, Confirm"}
+              </button>
+            </>
+          }
+        >
+          {confirmError && (
+            <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{confirmError}</p>
+          )}
+          <p className="text-xl text-orange-700 bg-orange-50 border border-orange-200 rounded-lg px-4 py-3">
+            Have you confirmed the guest has made payment? The guest must pay before you can confirm their reservation.
+          </p>
         </Modal>
       )}
 

@@ -20,7 +20,7 @@ function AlertCountBadge({ count, active }) {
 
 export default function AdminNavBar() {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
-  const { alertCount, refreshAlertCount } = useWebSocketContext();
+  const { alertCount, refreshAlertCount, disconnectedRefreshTick } = useWebSocketContext();
 
   // The sidebar only renders inside the authenticated admin layout, so this
   // re-syncs the badge after login (the provider's mount-time fetch happens
@@ -28,6 +28,15 @@ export default function AdminNavBar() {
   useEffect(() => {
     refreshAlertCount();
   }, [refreshAlertCount]);
+
+  // Fallback: if the socket stays disconnected, keep refreshing the badge
+  // via plain HTTP every 30s anyway (see WebSocketContext.jsx) — otherwise
+  // an alerts_updated event missed during an outage leaves this badge stale
+  // indefinitely, since it's only ever pushed, never polled.
+  useEffect(() => {
+    if (disconnectedRefreshTick === 0) return;
+    refreshAlertCount();
+  }, [disconnectedRefreshTick, refreshAlertCount]);
 
   const toggleMenu = () => {
     setIsMenuOpen(!isMenuOpen);

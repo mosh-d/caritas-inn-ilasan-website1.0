@@ -2,8 +2,8 @@ import { useState, useEffect, useCallback } from "react";
 import { IoClose, IoHomeOutline } from "react-icons/io5";
 import Modal from "../components/shared/Modal";
 import PageHeading from "../components/shared/PageHeading";
-import StatusBadge from "../components/shared/StatusBadge";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
+import RoomAssignmentPicker from "../components/shared/RoomAssignmentPicker";
 import { btn, field, table } from "../components/shared/ui";
 import { fetchInHouse, fetchInHouseById } from "../utils/front-office-api";
 import { checkOutReservation, extendStay, assignRoom } from "../utils/reservations-pms-api";
@@ -22,7 +22,8 @@ export default function AdminInHousePage() {
   const [selected, setSelected] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [processing, setProcessing] = useState(false);
-  const [newRoomNumber, setNewRoomNumber] = useState("");
+  const [assigningRoom, setAssigningRoom] = useState(false);
+  const [modalError, setModalError] = useState("");
   const [newCheckOutDate, setNewCheckOutDate] = useState("");
   const [folio, setFolio] = useState(null);
   const [folioLoading, setFolioLoading] = useState(false);
@@ -48,6 +49,7 @@ export default function AdminInHousePage() {
     setDetailLoading(true);
     setFolio(null);
     setFolioLoading(true);
+    setModalError("");
     try {
       const [full, folioResult] = await Promise.all([
         fetchInHouseById(reservation.id),
@@ -56,7 +58,6 @@ export default function AdminInHousePage() {
       setSelected(full);
       setFolio((folioResult?.data && folioResult.data[0]) || null);
       setNewCheckOutDate("");
-      setNewRoomNumber("");
     } catch (err) {
       setError(err.response?.data?.message || "Failed to load guest detail.");
     } finally {
@@ -65,7 +66,7 @@ export default function AdminInHousePage() {
     }
   };
 
-  const closeDetail = () => { setSelected(null); setFolio(null); };
+  const closeDetail = () => { setSelected(null); setFolio(null); setModalError(""); };
   const balanceDue = folio && Number(folio.balance) > 0;
 
   const handleCheckOut = async () => {
@@ -78,7 +79,7 @@ export default function AdminInHousePage() {
       closeDetail();
       loadList();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to check out.");
+      setModalError(err.response?.data?.message || "Failed to check out.");
     } finally {
       setProcessing(false);
     }
@@ -94,25 +95,26 @@ export default function AdminInHousePage() {
       closeDetail();
       loadList();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to extend stay.");
+      setModalError(err.response?.data?.message || "Failed to extend stay.");
     } finally {
       setProcessing(false);
     }
   };
 
-  const handleAssignRoom = async () => {
-    if (!selected || !newRoomNumber.trim()) return;
+  const handleAssignRoom = async (roomNumbers) => {
+    if (!selected) return;
     try {
-      setProcessing(true);
-      const existing = (selected.room_assignments || []).map((ra) => ra.room_number);
-      await assignRoom(selected.id, [...existing, newRoomNumber.trim()]);
+      setAssigningRoom(true);
+      await assignRoom(selected.id, roomNumbers);
       const full = await fetchInHouseById(selected.id);
       setSelected(full);
-      setNewRoomNumber("");
+      loadList();
+      setSuccessMessage("Room assignments saved.");
+      setTimeout(() => setSuccessMessage(""), 5000);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to assign room.");
+      setModalError(err.response?.data?.message || "Failed to assign room.");
     } finally {
-      setProcessing(false);
+      setAssigningRoom(false);
     }
   };
 
@@ -203,6 +205,10 @@ export default function AdminInHousePage() {
             <LoadingSpinner size="lg" />
           ) : (
             <>
+              {modalError && (
+                <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{modalError}</p>
+              )}
+
               <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
                 <InfoRow label="Email" value={selected.guest_email || "N/A"} />
                 <InfoRow label="Phone" value={selected.phone_number || "N/A"} />
@@ -228,29 +234,13 @@ export default function AdminInHousePage() {
 
               <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
                 <h3 className="text-2xl font-bold text-[color:var(--black)]">Room Assignments</h3>
-                {(selected.room_assignments || []).length === 0 ? (
-                  <p className="text-xl text-[color:var(--text-color)]/60">No rooms assigned yet.</p>
-                ) : (
-                  <div className="flex flex-wrap gap-2">
-                    {selected.room_assignments.map((ra) => (
-                      <span key={ra.id} className="text-xl bg-[color:var(--text-color)]/5 px-4 py-2 rounded-lg capitalize flex items-center gap-2">
-                        {ra.room_number} <StatusBadge status={ra.status} />
-                      </span>
-                    ))}
-                  </div>
-                )}
-                <div className="flex gap-3 flex-nowrap items-center">
-                  <input
-                    type="text"
-                    placeholder="Room number"
-                    value={newRoomNumber}
-                    onChange={(e) => setNewRoomNumber(e.target.value)}
-                    className={field.input}
-                  />
-                  <button onClick={handleAssignRoom} disabled={processing || !newRoomNumber.trim()} className={`${btn.primary} whitespace-nowrap`}>
-                    Assign
-                  </button>
-                </div>
+                <RoomAssignmentPicker
+                  reservationId={selected.id}
+                  roomsBooked={selected.rooms_booked}
+                  initialRoomNumbers={(selected.room_assignments || []).map((ra) => ra.room_number)}
+                  onSave={handleAssignRoom}
+                  saving={assigningRoom}
+                />
               </section>
 
               <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">

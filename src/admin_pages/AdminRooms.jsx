@@ -724,8 +724,6 @@ export default function AdminRoomsPage() {
 
   useEffect(() => {
     fetchRooms();
-    const interval = setInterval(() => fetchRooms(true), 60000);
-    return () => clearInterval(interval);
   }, []);
 
   // WebSocket handler - refetch data when rooms are updated (with multiple safety fetches for reliability)
@@ -764,12 +762,31 @@ export default function AdminRoomsPage() {
   }, []);
 
   // Subscribe to WebSocket updates
-  const { subscribe } = useWebSocketContext();
+  const { subscribe, isConnected, disconnectedRefreshTick } = useWebSocketContext();
 
   useEffect(() => {
     const unsubscribe = subscribe(handleRoomsUpdated);
     return unsubscribe;
   }, [handleRoomsUpdated, subscribe]);
+
+  // Re-sync whenever the socket (re)connects — closes the gap where a
+  // rooms_updated event broadcast while this client was disconnected
+  // (network blip, laptop sleep, a backend redeploy) would otherwise be
+  // lost for good, since Socket.IO's default emit has no queue/replay.
+  // Replaces the old 60s poll; the subscription above already handles
+  // live updates while connected.
+  useEffect(() => {
+    if (isConnected) fetchRooms(true);
+  }, [isConnected]);
+
+  // Fallback: if the socket stays disconnected, keep refreshing via plain
+  // HTTP every 30s anyway (see WebSocketContext.jsx) — the websocket and the
+  // REST API are separate transports, so this can recover even when the
+  // socket itself won't reconnect quickly.
+  useEffect(() => {
+    if (disconnectedRefreshTick === 0) return;
+    fetchRooms(true);
+  }, [disconnectedRefreshTick]);
 
   // Handle inline price update (desktop table)
   const handleInlinePriceUpdate = async (room) => {

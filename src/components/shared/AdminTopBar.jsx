@@ -1,12 +1,26 @@
 import { NavLink, useNavigate } from "react-router-dom";
 import Logo from "../../assets/caritas-logo-2.png";
-import { logout, getStoredStaffRole } from "../../utils/auth";
+import { logout, getStoredStaffRole, getStoredBranch } from "../../utils/auth";
 import StatusBadge from "./StatusBadge";
+
+// Branch names in the DB are stored as "<Brand> <Location>" (e.g. "Caritas Inn
+// Ilasan") since one branches table spans all three hotel brands. The logo
+// above already shows the brand, so strip a known brand prefix here and show
+// only the location — otherwise the brand would appear twice on screen.
+const KNOWN_BRAND_PREFIXES = ["Five Clover", "Caritas Inn", "Ringruby"];
+const branchLocationName = (fullName) => {
+  if (!fullName) return fullName;
+  const match = KNOWN_BRAND_PREFIXES.find((prefix) =>
+    fullName.toLowerCase().startsWith(prefix.toLowerCase()),
+  );
+  return match ? fullName.slice(match.length).trim() : fullName;
+};
 
 export default function AdminTopBar() {
   const navigate = useNavigate();
   const isLogin = window.location.pathname === "/admin";
   const staffRole = getStoredStaffRole();
+  const branch = getStoredBranch();
 
   const handleLogout = (e) => {
     e.preventDefault();
@@ -41,6 +55,11 @@ export default function AdminTopBar() {
             className="w-full h-auto"
           />
         </NavLink>
+        {branch?.name && (
+          <p className="text-center text-3xl font-bold tracking-wide text-white mt-1">
+            {branchLocationName(branch.name)}
+          </p>
+        )}
       </div>
       <div className="w-24"></div> {/* Spacer to balance the layout */}
     </div>

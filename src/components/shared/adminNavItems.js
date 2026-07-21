@@ -2,6 +2,7 @@ import {
   IoGridOutline,
   IoBedOutline,
   IoCalendarOutline,
+  IoAppsOutline,
   IoPeopleOutline,
   IoReceiptOutline,
   IoLogInOutline,
@@ -18,6 +19,7 @@ import {
 export const ADMIN_NAV_ITEMS = [
   { to: "/admin/overview", label: "OVERVIEW", icon: IoGridOutline, end: true },
   { to: "/admin/rooms", label: "ROOMS", icon: IoBedOutline },
+  { to: "/admin/room-chart", label: "ROOM CHART", icon: IoAppsOutline },
   { to: "/admin/reservations", label: "RESERVATIONS", icon: IoCalendarOutline },
   { to: "/admin/guests", label: "GUESTS", icon: IoPeopleOutline },
   { to: "/admin/folios", label: "FOLIOS", icon: IoReceiptOutline },

@@ -91,6 +91,16 @@ export const checkAvailability = async (branchId, startDate, endDate) => {
   return response.data;
 };
 
+// Read-only tape-chart data — one row per numbered physical room, plus an
+// "unassigned" bucket per room type for bookings without a specific room yet.
+export const fetchRoomChart = async (startDate, endDate) => {
+  const response = await axios.get(`${baseUrl}/api/rooms/chart`, {
+    headers: getAuthHeaders(),
+    params: { start_date: startDate, end_date: endDate },
+  });
+  return response.data;
+};
+
 export const createAdminReservation = async (payload) => {
   const response = await axios.post(`${baseUrl}/api/reservations`, payload, {
     headers: { ...getAuthHeaders(), "Content-Type": "application/json" },
@@ -110,6 +120,25 @@ export const assignRoom = async (id, roomNumbers) => {
     { room_numbers: roomNumbers },
     { headers: getAuthHeaders() },
   );
+  return response.data;
+};
+
+// Real, numbered rooms of the reservation's own type that aren't occupied
+// right now or promised to an overlapping stay — for the check-in room picker.
+export const fetchAvailableRoomsForReservation = async (id) => {
+  const response = await axios.get(`${baseUrl}/api/reservations/${id}/available-rooms`, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
+// Same, but before a reservation exists yet (walk-in flow) — pass the room
+// type and stay dates directly.
+export const fetchAvailableRoomNumbers = async ({ roomTypeId, checkIn, checkOut }) => {
+  const response = await axios.get(`${baseUrl}/api/reservations/available-rooms`, {
+    headers: getAuthHeaders(),
+    params: { room_type_id: roomTypeId, check_in: checkIn, check_out: checkOut },
+  });
   return response.data;
 };
 

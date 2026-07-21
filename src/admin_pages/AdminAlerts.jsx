@@ -20,6 +20,16 @@ const daysAgo = (date) => {
   return diff === 0 ? "today" : diff === 1 ? "yesterday" : `${diff} days ago`;
 };
 
+const timeUntil = (date) => {
+  const diffMs = new Date(date).getTime() - Date.now();
+  if (diffMs <= 0) return "Expiring now";
+  const totalMinutes = Math.ceil(diffMs / 60000);
+  const hours = Math.floor(totalMinutes / 60);
+  const minutes = totalMinutes % 60;
+  if (hours === 0) return `in ${minutes}m`;
+  return `in ${hours}h ${minutes}m`;
+};
+
 const PAGE_SIZE = 10;
 
 function Pagination({ page, total, onPage }) {
@@ -37,7 +47,7 @@ function Pagination({ page, total, onPage }) {
 export default function AdminAlertsPage() {
   const navigate = useNavigate();
   const [tab, setTab] = useState("missed");
-  const [pages, setPages] = useState({ missed: 1, overdue: 1, balances: 1 });
+  const [pages, setPages] = useState({ missed: 1, overdue: 1, balances: 1, unconfirmed: 1 });
   const [alerts, setAlerts] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -85,6 +95,7 @@ export default function AdminAlertsPage() {
   const missed = alerts?.missed_check_ins ?? [];
   const overdue = alerts?.overdue_checkouts ?? [];
   const balances = alerts?.overdue_balances ?? [];
+  const unconfirmed = alerts?.unconfirmed ?? [];
   const total = alerts?.total ?? 0;
 
   const setPage = (key, p) => setPages((prev) => ({ ...prev, [key]: p }));
@@ -94,6 +105,7 @@ export default function AdminAlertsPage() {
 
   const tabs = [
     { key: "missed", label: "Missed Check-Ins", count: missed.length },
+    { key: "unconfirmed", label: "Unconfirmed", count: unconfirmed.length },
     { key: "overdue", label: "Overdue Checkouts", count: overdue.length },
     { key: "balances", label: "Overdue Balances", count: balances.length },
   ];
@@ -156,7 +168,7 @@ export default function AdminAlertsPage() {
               ) : (
                 <div className="w-full flex flex-col gap-4">
                   <p className="text-xl text-[color:var(--text-color)]/60">
-                    Reservations whose check-in date has passed with no arrival recorded.
+                    Confirmed (paid) reservations whose check-in date has passed with no arrival recorded.
                   </p>
                   <div className={table.card}>
                     <div className={table.scroll}>
@@ -204,6 +216,57 @@ export default function AdminAlertsPage() {
                     </div>
                   </div>
                   <Pagination page={pages.missed} total={missed.length} onPage={(p) => setPage("missed", p)} />
+                </div>
+              )
+            )}
+
+            {/* Unconfirmed */}
+            {tab === "unconfirmed" && (
+              unconfirmed.length === 0 ? (
+                <AllClear message="No unconfirmed reservations." />
+              ) : (
+                <div className="w-full flex flex-col gap-4">
+                  <p className="text-xl text-[color:var(--text-color)]/60">
+                    Awaiting payment confirmation — auto-cancelled and released back to availability if left unconfirmed for too long.
+                  </p>
+                  <div className={table.card}>
+                    <div className={table.scroll}>
+                      <table className={table.el}>
+                        <thead>
+                          <tr className={table.headRow}>
+                            <th className={table.th}>Guest</th>
+                            <th className={`${table.th} hidden md:table-cell`}>Room Type</th>
+                            <th className={`${table.th} hidden md:table-cell`}>Booked</th>
+                            <th className={table.th}>Auto-Cancels</th>
+                            <th className={table.th}>Actions</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {paginate(unconfirmed, "unconfirmed").map((r) => (
+                            <tr key={r.id} className={table.row}>
+                              <td className={`${table.td} font-medium`}>
+                                <div>{r.guest_name}</div>
+                                <div className="text-base text-[color:var(--text-color)]/50">{r.booking_reference}</div>
+                              </td>
+                              <td className={`${table.td} hidden md:table-cell`}>{r.room_type?.name || "N/A"}</td>
+                              <td className={`${table.td} hidden md:table-cell`}>{daysAgo(r.created_at)}</td>
+                              <td className={table.td}>
+                                <span className="text-base text-orange-600 font-semibold">{timeUntil(r.expires_at)}</span>
+                              </td>
+                              <td className={table.td}>
+                                <div className={table.actions}>
+                                  <button onClick={() => navigate("/admin/reservations")} className={btn.rowPrimary}>
+                                    View
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                  <Pagination page={pages.unconfirmed} total={unconfirmed.length} onPage={(p) => setPage("unconfirmed", p)} />
                 </div>
               )
             )}

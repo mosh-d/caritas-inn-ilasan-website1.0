@@ -12,6 +12,8 @@ import {
   checkAvailability,
   createAdminReservation,
   confirmReservation,
+  fetchAvailableRoomsForReservation,
+  fetchAvailableRoomNumbers,
 } from "../utils/reservations-pms-api";
 
 const BRANCH_ID = 4;
@@ -35,6 +37,8 @@ export default function AdminCheckInsPage() {
   const [selected, setSelected] = useState(null);
   const [roomNumber, setRoomNumber] = useState("");
   const [processing, setProcessing] = useState(false);
+  const [availableRooms, setAvailableRooms] = useState(null);
+  const [availableRoomsLoading, setAvailableRoomsLoading] = useState(false);
 
   // --- Walk-in tab ---
   const [walkIn, setWalkIn] = useState(EMPTY_WALK_IN);
@@ -43,6 +47,8 @@ export default function AdminCheckInsPage() {
   const [walkInProcessing, setWalkInProcessing] = useState(false);
   const [walkInSuccess, setWalkInSuccess] = useState(null);
   const [walkInError, setWalkInError] = useState(null);
+  const [walkInAvailableRooms, setWalkInAvailableRooms] = useState(null);
+  const [walkInRoomsLoading, setWalkInRoomsLoading] = useState(false);
 
   const loadList = useCallback(async () => {
     try {
@@ -63,6 +69,43 @@ export default function AdminCheckInsPage() {
     setSelected(reservation);
     setRoomNumber((reservation.room_assignments && reservation.room_assignments[0]?.room_number) || "");
   };
+
+  // Load real, currently-free room numbers for the reservation's room type
+  // once the check-in modal opens (its own already-assigned room, if any,
+  // is included since the endpoint excludes this reservation's own conflicts).
+  useEffect(() => {
+    if (!selected) {
+      setAvailableRooms(null);
+      return;
+    }
+    let cancelled = false;
+    setAvailableRoomsLoading(true);
+    fetchAvailableRoomsForReservation(selected.id)
+      .then((data) => { if (!cancelled) setAvailableRooms(data); })
+      .catch(() => { if (!cancelled) setAvailableRooms({ available: [], unlabeled_rooms: 0 }); })
+      .finally(() => { if (!cancelled) setAvailableRoomsLoading(false); });
+    return () => { cancelled = true; };
+  }, [selected?.id]);
+
+  // Same lookup for the walk-in flow, before a reservation exists — needs a
+  // room type and check-out date chosen first.
+  useEffect(() => {
+    if (!walkIn.roomTypeId || !walkIn.checkOut) {
+      setWalkInAvailableRooms(null);
+      return;
+    }
+    let cancelled = false;
+    setWalkInRoomsLoading(true);
+    fetchAvailableRoomNumbers({
+      roomTypeId: Number(walkIn.roomTypeId),
+      checkIn: todayISO(),
+      checkOut: walkIn.checkOut,
+    })
+      .then((data) => { if (!cancelled) setWalkInAvailableRooms(data); })
+      .catch(() => { if (!cancelled) setWalkInAvailableRooms({ available: [], unlabeled_rooms: 0 }); })
+      .finally(() => { if (!cancelled) setWalkInRoomsLoading(false); });
+    return () => { cancelled = true; };
+  }, [walkIn.roomTypeId, walkIn.checkOut]);
 
   const handleCheckIn = async () => {
     if (!selected) return;
@@ -326,7 +369,7 @@ export default function AdminCheckInsPage() {
                                 name="roomType"
                                 value={rt.room_type_id}
                                 checked={walkIn.roomTypeId === String(rt.room_type_id)}
-                                onChange={(e) => setWalkIn((p) => ({ ...p, roomTypeId: e.target.value }))}
+                                onChange={(e) => setWalkIn((p) => ({ ...p, roomTypeId: e.target.value, roomNumber: "" }))}
                                 className="accent-[color:var(--emphasis)] w-5 h-5"
                               />
                               <span className="text-xl font-medium">{rt.room_type_name}</span>
@@ -388,13 +431,32 @@ export default function AdminCheckInsPage() {
                     <label className={field.label}>
                       Room Number <span className="text-[color:var(--text-color)]/40 font-normal">(optional)</span>
                     </label>
-                    <input
-                      type="text"
-                      placeholder="e.g. 205"
-                      value={walkIn.roomNumber}
-                      onChange={(e) => setWalkIn((p) => ({ ...p, roomNumber: e.target.value }))}
-                      className={`${field.input} w-44`}
-                    />
+                    {!walkIn.roomTypeId ? (
+                      <p className="text-lg text-[color:var(--text-color)]/40">Select a room type first.</p>
+                    ) : walkInRoomsLoading ? (
+                      <p className="text-lg text-[color:var(--text-color)]/50">Loading available rooms…</p>
+                    ) : walkInAvailableRooms && walkInAvailableRooms.available.length > 0 ? (
+                      <select
+                        value={walkIn.roomNumber}
+                        onChange={(e) => setWalkIn((p) => ({ ...p, roomNumber: e.target.value }))}
+                        className={`${field.select} w-44`}
+                      >
+                        <option value="">-- Select a room --</option>
+                        {walkInAvailableRooms.available.map((r) => (
+                          <option key={r.id} value={r.room_number}>{r.room_number}</option>
+                        ))}
+                      </select>
+                    ) : walkInAvailableRooms && walkInAvailableRooms.unlabeled_rooms === 0 ? (
+                      <p className="text-lg text-red-600">No rooms of this type are currently free.</p>
+                    ) : (
+                      <input
+                        type="text"
+                        placeholder="e.g. 205"
+                        value={walkIn.roomNumber}
+                        onChange={(e) => setWalkIn((p) => ({ ...p, roomNumber: e.target.value }))}
+                        className={`${field.input} w-44`}
+                      />
+                    )}
                   </div>
                 </div>
 
@@ -439,13 +501,30 @@ export default function AdminCheckInsPage() {
           </div>
           <div className="flex flex-col gap-2">
             <label className={field.label}>Room Number (optional)</label>
-            <input
-              type="text"
-              placeholder="e.g. 205"
-              value={roomNumber}
-              onChange={(e) => setRoomNumber(e.target.value)}
-              className={field.input}
-            />
+            {availableRoomsLoading ? (
+              <p className="text-lg text-[color:var(--text-color)]/50">Loading available rooms…</p>
+            ) : availableRooms && availableRooms.available.length > 0 ? (
+              <select
+                value={roomNumber}
+                onChange={(e) => setRoomNumber(e.target.value)}
+                className={field.select}
+              >
+                <option value="">-- Select a room --</option>
+                {availableRooms.available.map((r) => (
+                  <option key={r.id} value={r.room_number}>{r.room_number}</option>
+                ))}
+              </select>
+            ) : availableRooms && availableRooms.unlabeled_rooms === 0 ? (
+              <p className="text-lg text-red-600">No rooms of this type are currently free.</p>
+            ) : (
+              <input
+                type="text"
+                placeholder="e.g. 205"
+                value={roomNumber}
+                onChange={(e) => setRoomNumber(e.target.value)}
+                className={field.input}
+              />
+            )}
           </div>
         </Modal>
       )}
