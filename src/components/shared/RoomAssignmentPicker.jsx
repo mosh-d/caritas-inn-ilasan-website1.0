@@ -8,7 +8,17 @@ import { fetchAvailableRoomsForReservation } from "../../utils/reservations-pms-
 // the same room to one reservation) but always keep its own current value
 // selectable. Falls back to free text if the room type has no numbered
 // inventory yet, matching the Check-In picker's behavior.
-export default function RoomAssignmentPicker({ reservationId, roomsBooked, initialRoomNumbers, onSave, saving }) {
+//
+// Two usage modes:
+// - Self-contained (default): renders its own "Save Room Assignments"
+//   button, calls `onSave(validSlots)` when clicked (existing behavior,
+//   used by AdminInHouse.jsx/AdminReservations.jsx's Room Assignments
+//   section, a standalone action separate from any other button nearby).
+// - `hideSaveButton`: no internal button — instead calls `onSlotsChange`
+//   live as the user edits, so a parent with its OWN single action button
+//   (e.g. Check-In's "Confirm Check In") can assign rooms and check in
+//   together in one click, without a second, redundant save step.
+export default function RoomAssignmentPicker({ reservationId, roomsBooked, initialRoomNumbers, onSave, saving, hideSaveButton = false, onSlotsChange }) {
   const [availableRooms, setAvailableRooms] = useState(null);
   const [loading, setLoading] = useState(true);
   const [slots, setSlots] = useState(initialRoomNumbers.length > 0 ? initialRoomNumbers : [""]);
@@ -25,6 +35,11 @@ export default function RoomAssignmentPicker({ reservationId, roomsBooked, initi
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [reservationId]);
 
+  useEffect(() => {
+    onSlotsChange?.(slots.map((s) => s.trim()).filter(Boolean));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [slots]);
+
   const updateSlot = (index, value) => setSlots((prev) => prev.map((v, i) => (i === index ? value : v)));
   const removeSlot = (index) => setSlots((prev) => prev.filter((_, i) => i !== index));
   const addSlot = () => setSlots((prev) => [...prev, ""]);
@@ -39,7 +54,7 @@ export default function RoomAssignmentPicker({ reservationId, roomsBooked, initi
   return (
     <div className="flex flex-col gap-3">
       {loading ? (
-        <p className="text-lg text-[color:var(--text-color)]/50">Loading available rooms…</p>
+        <p className="text-lg text-[color:var(--text-color)]/68">Loading available rooms…</p>
       ) : noRoomsFree && slots.every((s) => !s) ? (
         <p className="text-lg text-red-600">No rooms of this type are currently free.</p>
       ) : (
@@ -76,17 +91,19 @@ export default function RoomAssignmentPicker({ reservationId, roomsBooked, initi
         {canAddMore && (
           <button type="button" onClick={addSlot} className={btn.rowSecondary}>+ Add Room</button>
         )}
-        <button
-          type="button"
-          onClick={() => onSave(validSlots)}
-          disabled={saving || unchanged}
-          className={`${btn.primary} whitespace-nowrap`}
-        >
-          {saving ? "Saving..." : "Save Room Assignments"}
-        </button>
+        {!hideSaveButton && (
+          <button
+            type="button"
+            onClick={() => onSave(validSlots)}
+            disabled={saving || unchanged}
+            className={`${btn.primary} whitespace-nowrap`}
+          >
+            {saving ? "Saving..." : "Save Room Assignments"}
+          </button>
+        )}
       </div>
       {roomsBooked > 1 && (
-        <p className="text-lg text-[color:var(--text-color)]/40">{validSlots.length} of {roomsBooked} room(s) assigned</p>
+        <p className="text-lg text-[color:var(--text-color)]/60">{validSlots.length} of {roomsBooked} room(s) assigned</p>
       )}
     </div>
   );

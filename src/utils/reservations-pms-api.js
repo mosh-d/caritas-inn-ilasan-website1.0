@@ -28,6 +28,27 @@ export const updateReservation = async (id, payload) => {
   return response.data;
 };
 
+export const fetchReservationNotes = async (id) => {
+  const response = await axios.get(`${baseUrl}/api/reservations/${id}/notes`, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
+export const addReservationNote = async (id, note) => {
+  const response = await axios.post(`${baseUrl}/api/reservations/${id}/notes`, { note }, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
+export const deleteReservationNote = async (id, noteId) => {
+  const response = await axios.delete(`${baseUrl}/api/reservations/${id}/notes/${noteId}`, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
 export const cancelReservationById = async (id, reason) => {
   const response = await axios.post(
     `${baseUrl}/api/reservations/${id}/cancel`,
@@ -97,6 +118,13 @@ export const fetchRoomChart = async (startDate, endDate) => {
   const response = await axios.get(`${baseUrl}/api/rooms/chart`, {
     headers: getAuthHeaders(),
     params: { start_date: startDate, end_date: endDate },
+  });
+  return response.data;
+};
+
+export const fetchRoomStatusList = async () => {
+  const response = await axios.get(`${baseUrl}/api/rooms/status`, {
+    headers: getAuthHeaders(),
   });
   return response.data;
 };

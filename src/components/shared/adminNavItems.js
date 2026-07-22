@@ -12,6 +12,7 @@ import {
   IoMoonOutline,
   IoNotificationsOutline,
   IoKeyOutline,
+  IoHelpCircleOutline,
 } from "react-icons/io5";
 
 // Single source of truth for the admin sidebar + mobile menu.
@@ -30,4 +31,5 @@ export const ADMIN_NAV_ITEMS = [
   { to: "/admin/night-audit", label: "NIGHT AUDIT", icon: IoMoonOutline },
   { to: "/admin/alerts", label: "ALERTS", icon: IoNotificationsOutline, showAlertBadge: true },
   { to: "/admin/account", label: "ACCOUNT", icon: IoKeyOutline },
+  { to: "/admin/help", label: "HELP", icon: IoHelpCircleOutline },
 ];

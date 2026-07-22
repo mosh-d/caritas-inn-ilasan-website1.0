@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { IoClose, IoLogInOutline } from "react-icons/io5";
 import Modal from "../components/shared/Modal";
 import PageHeading from "../components/shared/PageHeading";
@@ -6,26 +7,33 @@ import StatusBadge from "../components/shared/StatusBadge";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import { btn, field, table } from "../components/shared/ui";
 import { fetchCheckInList } from "../utils/front-office-api";
+import { localTodayISO } from "../utils/date-utils";
+import { useWebSocketContext } from "../context/WebSocketContext";
+import RoomAssignmentPicker from "../components/shared/RoomAssignmentPicker";
 import {
   checkInReservation,
   assignRoom,
   checkAvailability,
   createAdminReservation,
   confirmReservation,
-  fetchAvailableRoomsForReservation,
   fetchAvailableRoomNumbers,
 } from "../utils/reservations-pms-api";
 
 const BRANCH_ID = 4;
 const formatDate = (d) =>
   d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A";
-const todayISO = () => new Date().toISOString().split("T")[0];
-const tomorrowISO = () => new Date(Date.now() + 86400000).toISOString().split("T")[0];
+const todayISO = () => localTodayISO();
+const tomorrowISO = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+};
 const fmtCurrency = (amount, symbol = "₦") => `${symbol}${Number(amount || 0).toLocaleString()}`;
 
 const EMPTY_WALK_IN = { checkOut: "", roomsBooked: 1, roomTypeId: "", guestName: "", phone: "", email: "", roomNumber: "" };
 
 export default function AdminCheckInsPage() {
+  const navigate = useNavigate();
   const [tab, setTab] = useState("arrivals");
 
   // --- Arrivals tab ---
@@ -35,10 +43,8 @@ export default function AdminCheckInsPage() {
   const [error, setError] = useState(null);
   const [successMessage, setSuccessMessage] = useState("");
   const [selected, setSelected] = useState(null);
-  const [roomNumber, setRoomNumber] = useState("");
+  const [roomNumbers, setRoomNumbers] = useState([]);
   const [processing, setProcessing] = useState(false);
-  const [availableRooms, setAvailableRooms] = useState(null);
-  const [availableRoomsLoading, setAvailableRoomsLoading] = useState(false);
 
   // --- Walk-in tab ---
   const [walkIn, setWalkIn] = useState(EMPTY_WALK_IN);
@@ -57,7 +63,7 @@ export default function AdminCheckInsPage() {
       setReservations(Array.isArray(result) ? result : []);
       setError(null);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load check-in list.");
+      setError((err.response?.data?.message || "Failed to load check-in list.") + " Please refresh the page.");
     } finally {
       setLoading(false);
     }
@@ -65,27 +71,19 @@ export default function AdminCheckInsPage() {
 
   useEffect(() => { loadList(); }, [loadList]);
 
+  // Re-fetch whenever the socket (re)connects (e.g. after a backend
+  // restart), same pattern as AdminOverview.jsx/AdminRooms.jsx.
+  const { isConnected } = useWebSocketContext();
+  useEffect(() => {
+    if (!isConnected) return;
+    loadList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected]);
+
   const openCheckIn = (reservation) => {
     setSelected(reservation);
-    setRoomNumber((reservation.room_assignments && reservation.room_assignments[0]?.room_number) || "");
+    setRoomNumbers((reservation.room_assignments || []).map((ra) => ra.room_number));
   };
-
-  // Load real, currently-free room numbers for the reservation's room type
-  // once the check-in modal opens (its own already-assigned room, if any,
-  // is included since the endpoint excludes this reservation's own conflicts).
-  useEffect(() => {
-    if (!selected) {
-      setAvailableRooms(null);
-      return;
-    }
-    let cancelled = false;
-    setAvailableRoomsLoading(true);
-    fetchAvailableRoomsForReservation(selected.id)
-      .then((data) => { if (!cancelled) setAvailableRooms(data); })
-      .catch(() => { if (!cancelled) setAvailableRooms({ available: [], unlabeled_rooms: 0 }); })
-      .finally(() => { if (!cancelled) setAvailableRoomsLoading(false); });
-    return () => { cancelled = true; };
-  }, [selected?.id]);
 
   // Same lookup for the walk-in flow, before a reservation exists — needs a
   // room type and check-out date chosen first.
@@ -111,13 +109,15 @@ export default function AdminCheckInsPage() {
     if (!selected) return;
     try {
       setProcessing(true);
-      if (roomNumber.trim()) await assignRoom(selected.id, [roomNumber.trim()]);
-      await checkInReservation(selected.id);
-      setSuccessMessage(`${selected.guest_name} checked in.`);
-      setTimeout(() => setSuccessMessage(""), 5000);
+      if (roomNumbers.length > 0) await assignRoom(selected.id, roomNumbers);
+      const checkedInId = selected.id;
+      await checkInReservation(checkedInId);
       setSelected(null);
-      setRoomNumber("");
-      loadList();
+      setRoomNumbers([]);
+      // Straight to the folio so staff can record payment right away —
+      // covers a hold that was paid but never recorded, or a guest paying
+      // now at the front desk.
+      navigate(`/admin/folios?reservation_id=${checkedInId}`);
     } catch (err) {
       setError(err.response?.data?.message || "Failed to check in.");
     } finally {
@@ -216,7 +216,7 @@ export default function AdminCheckInsPage() {
               className={`px-8 py-3 text-xl font-bold transition-colors border-b-2 -mb-px cursor-pointer ${
                 tab === key
                   ? "border-[color:var(--emphasis)] text-[color:var(--emphasis)]"
-                  : "border-transparent text-[color:var(--text-color)]/60 hover:text-[color:var(--text-color)]"
+                  : "border-transparent text-[color:var(--text-color)]/76 hover:text-[color:var(--text-color)]"
               }`}
             >
               {label}
@@ -224,10 +224,16 @@ export default function AdminCheckInsPage() {
           ))}
         </div>
 
+        <p className="text-xl text-[color:var(--text-color)]/76">
+          {tab === "arrivals"
+            ? "Confirmed (paid) reservations expected to check in on the selected date."
+            : "Register a guest who arrives without an existing reservation."}
+        </p>
+
         {/* EXPECTED ARRIVALS */}
         {tab === "arrivals" && (
           <>
-            <div className="w-full flex justify-end">
+            <div className="w-auto flex justify-end">
               <input
                 type="date"
                 value={date}
@@ -253,7 +259,7 @@ export default function AdminCheckInsPage() {
                     ) : error ? (
                       <tr><td colSpan="5" className="px-8 py-10 text-center text-red-600 text-xl">{error}</td></tr>
                     ) : reservations.length === 0 ? (
-                      <tr><td colSpan="5" className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/50">No expected arrivals for this date.</td></tr>
+                      <tr><td colSpan="5" className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No expected arrivals for this date.</td></tr>
                     ) : (
                       reservations.map((r) => (
                         <tr key={r.id} className={table.row}>
@@ -290,10 +296,10 @@ export default function AdminCheckInsPage() {
               <div className="flex flex-col items-center gap-6 py-16 text-center bg-white rounded-xl border border-[color:var(--text-color)]/10 w-full">
                 <div className="w-20 h-20 rounded-full bg-green-100 flex items-center justify-center text-green-600 text-5xl font-bold">✓</div>
                 <h2 className="text-4xl font-secondary font-bold text-[color:var(--black)]">{walkInSuccess.guestName}</h2>
-                <p className="text-2xl text-[color:var(--text-color)]/70">
+                <p className="text-2xl text-[color:var(--text-color)]/84">
                   Checked in · Booking Ref: <strong className="text-[color:var(--black)]">{walkInSuccess.bookingRef}</strong>
                 </p>
-                <p className="text-xl text-[color:var(--text-color)]/50">Guest profile and folio have been created.</p>
+                <p className="text-xl text-[color:var(--text-color)]/68">Guest profile and folio have been created.</p>
                 <button onClick={resetWalkIn} className={`${btn.primary} mt-4`}>New Walk-In</button>
               </div>
             ) : (
@@ -378,7 +384,7 @@ export default function AdminCheckInsPage() {
                               <span className="text-xl font-bold text-[color:var(--emphasis)]">
                                 {fmtCurrency(rt.base_rate, rt.currency_symbol)} / night
                               </span>
-                              <span className="block text-lg text-[color:var(--text-color)]/50">
+                              <span className="block text-lg text-[color:var(--text-color)]/68">
                                 {rt.available_rooms} available
                               </span>
                             </div>
@@ -429,12 +435,12 @@ export default function AdminCheckInsPage() {
                   </div>
                   <div className="flex flex-col gap-2">
                     <label className={field.label}>
-                      Room Number <span className="text-[color:var(--text-color)]/40 font-normal">(optional)</span>
+                      Room Number <span className="text-[color:var(--text-color)]/60 font-normal">(optional)</span>
                     </label>
                     {!walkIn.roomTypeId ? (
-                      <p className="text-lg text-[color:var(--text-color)]/40">Select a room type first.</p>
+                      <p className="text-lg text-[color:var(--text-color)]/60">Select a room type first.</p>
                     ) : walkInRoomsLoading ? (
-                      <p className="text-lg text-[color:var(--text-color)]/50">Loading available rooms…</p>
+                      <p className="text-lg text-[color:var(--text-color)]/68">Loading available rooms…</p>
                     ) : walkInAvailableRooms && walkInAvailableRooms.available.length > 0 ? (
                       <select
                         value={walkIn.roomNumber}
@@ -491,40 +497,23 @@ export default function AdminCheckInsPage() {
         >
           <div className="grid grid-cols-2 gap-4">
             <div className="bg-[color:var(--text-color)]/3 rounded-lg px-5 py-4">
-              <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/50 mb-1">Room Type</p>
+              <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68 mb-1">Room Type</p>
               <p className="text-2xl font-bold text-[color:var(--black)]">{selected.room_type?.name || "N/A"}</p>
             </div>
             <div className="bg-[color:var(--text-color)]/3 rounded-lg px-5 py-4">
-              <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/50 mb-1">Rooms Booked</p>
+              <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68 mb-1">Rooms Booked</p>
               <p className="text-2xl font-bold text-[color:var(--black)]">{selected.rooms_booked}</p>
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <label className={field.label}>Room Number (optional)</label>
-            {availableRoomsLoading ? (
-              <p className="text-lg text-[color:var(--text-color)]/50">Loading available rooms…</p>
-            ) : availableRooms && availableRooms.available.length > 0 ? (
-              <select
-                value={roomNumber}
-                onChange={(e) => setRoomNumber(e.target.value)}
-                className={field.select}
-              >
-                <option value="">-- Select a room --</option>
-                {availableRooms.available.map((r) => (
-                  <option key={r.id} value={r.room_number}>{r.room_number}</option>
-                ))}
-              </select>
-            ) : availableRooms && availableRooms.unlabeled_rooms === 0 ? (
-              <p className="text-lg text-red-600">No rooms of this type are currently free.</p>
-            ) : (
-              <input
-                type="text"
-                placeholder="e.g. 205"
-                value={roomNumber}
-                onChange={(e) => setRoomNumber(e.target.value)}
-                className={field.input}
-              />
-            )}
+            <label className={field.label}>Room{selected.rooms_booked > 1 ? "s" : ""} (optional)</label>
+            <RoomAssignmentPicker
+              reservationId={selected.id}
+              roomsBooked={selected.rooms_booked}
+              initialRoomNumbers={roomNumbers}
+              onSlotsChange={setRoomNumbers}
+              hideSaveButton
+            />
           </div>
         </Modal>
       )}

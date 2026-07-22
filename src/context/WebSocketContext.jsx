@@ -30,18 +30,23 @@ function WebSocketProvider({ children }) {
   const [alertCount, setAlertCount] = useState(0);
   const prevAlertCountRef = useRef(null);
 
+  // Single place that ever writes alertCount, whatever triggered the update
+  // (a fresh fetch, the socket event, or a page that already has its own
+  // up-to-date total) — keeps prevAlertCountRef consistent so the
+  // increase-only notification below never fires off a stale comparison.
+  const syncAlertCount = useCallback((newTotal) => {
+    setAlertCount(newTotal);
+    prevAlertCountRef.current = newTotal;
+  }, []);
+
   // Fetch the real count from the DB. Exposed so the admin layout can
   // re-sync after login — the mount-time fetch fails silently on the
   // public site / login screen (no auth yet) and would leave the badge at 0.
   const refreshAlertCount = useCallback(() => {
     fetchAlerts()
-      .then((data) => {
-        const count = data.total ?? 0;
-        setAlertCount(count);
-        prevAlertCountRef.current = count;
-      })
+      .then((data) => syncAlertCount(data.total ?? 0))
       .catch(() => {});
-  }, []);
+  }, [syncAlertCount]);
 
   useEffect(() => {
     refreshAlertCount();
@@ -103,8 +108,7 @@ function WebSocketProvider({ children }) {
         const newCount = data.alert_count ?? 0;
         const prev = prevAlertCountRef.current;
         // Update shared badge count
-        setAlertCount(newCount);
-        prevAlertCountRef.current = newCount;
+        syncAlertCount(newCount);
         // Browser notification only when count increases
         if (prev !== null && newCount > prev && 'Notification' in window && Notification.permission === 'granted') {
           new Notification('Hotel PMS — New Alert', {
@@ -135,7 +139,7 @@ function WebSocketProvider({ children }) {
   }, []);
 
   return (
-    <WebSocketContext.Provider value={{ isConnected, subscribe, alertCount, refreshAlertCount, disconnectedRefreshTick }}>
+    <WebSocketContext.Provider value={{ isConnected, subscribe, alertCount, refreshAlertCount, syncAlertCount, disconnectedRefreshTick }}>
       {children}
     </WebSocketContext.Provider>
   );

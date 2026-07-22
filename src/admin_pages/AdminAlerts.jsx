@@ -20,14 +20,42 @@ const daysAgo = (date) => {
   return diff === 0 ? "today" : diff === 1 ? "yesterday" : `${diff} days ago`;
 };
 
-const timeUntil = (date) => {
-  const diffMs = new Date(date).getTime() - Date.now();
+// check_in/check_out are date-only values (always stored as UTC midnight
+// representing a Lagos calendar day) — "today"/"yesterday" here has to mean
+// a real calendar-day difference, not raw elapsed milliseconds. The plain
+// daysAgo() above divides elapsed ms by 86400000, which is wrong for a
+// date-only field: a check-in from "yesterday" (calendar-wise, in Lagos)
+// can still be under 24 real hours in the past — exactly how a missed
+// check-in from Jul 21 kept showing "(today)" after midnight on the 22nd.
+// Shifts by the fixed WAT (UTC+1, no DST) offset before reading UTC date
+// fields — same trick as todayInBranchTimezone() on the backend — to get
+// the correct Lagos calendar date regardless of what timezone the viewing
+// browser happens to be in.
+const WAT_OFFSET_MS = 60 * 60000;
+const calendarDaysAgo = (date) => {
+  const d = new Date(date);
+  const dateDay = Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const nowShifted = new Date(Date.now() + WAT_OFFSET_MS);
+  const todayDay = Date.UTC(nowShifted.getUTCFullYear(), nowShifted.getUTCMonth(), nowShifted.getUTCDate());
+  const diff = Math.round((todayDay - dateDay) / 86400000);
+  if (diff <= 0) return "today";
+  if (diff === 1) return "yesterday";
+  return `${diff} days ago`;
+};
+
+// Takes `now` as a param (driven by a 1s setInterval in the page component)
+// rather than reading Date.now() itself, so every countdown on the page
+// ticks in lockstep and re-renders live instead of only updating whenever
+// the alerts list happens to refetch.
+const timeUntil = (date, now) => {
+  const diffMs = new Date(date).getTime() - now;
   if (diffMs <= 0) return "Expiring now";
-  const totalMinutes = Math.ceil(diffMs / 60000);
-  const hours = Math.floor(totalMinutes / 60);
-  const minutes = totalMinutes % 60;
-  if (hours === 0) return `in ${minutes}m`;
-  return `in ${hours}h ${minutes}m`;
+  const totalSeconds = Math.ceil(diffMs / 1000);
+  const hours = Math.floor(totalSeconds / 3600);
+  const minutes = Math.floor((totalSeconds % 3600) / 60);
+  const seconds = totalSeconds % 60;
+  if (hours > 0) return `in ${hours}h ${minutes}m`;
+  return `in ${minutes}m ${seconds}s`;
 };
 
 const PAGE_SIZE = 10;
@@ -54,7 +82,16 @@ export default function AdminAlertsPage() {
   const [successMessage, setSuccessMessage] = useState("");
   const [actionLoading, setActionLoading] = useState(null);
 
-  const { subscribe } = useWebSocketContext();
+  const { subscribe, alertCount, syncAlertCount, isConnected } = useWebSocketContext();
+
+  // Drives every hold-expiry countdown on this page — ticks once a second so
+  // "Unconfirmed" reads a live, second-accurate countdown instead of a value
+  // frozen until the next alerts refetch.
+  const [now, setNow] = useState(() => Date.now());
+  useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const loadAlerts = useCallback(async () => {
     try {
@@ -62,15 +99,27 @@ export default function AdminAlertsPage() {
       const data = await fetchAlerts();
       setAlerts(data);
       setError(null);
+      // Keep the sidebar badge in lockstep with this page's own total instead
+      // of waiting on the next 5-minute backend cron tick or a reconnect —
+      // this is the one place that already has a fresh, authoritative count.
+      syncAlertCount(data.total ?? 0);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load alerts.");
+      setError((err.response?.data?.message || "Failed to load alerts.") + " Please refresh the page.");
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [syncAlertCount]);
 
   useEffect(() => { loadAlerts(); }, [loadAlerts]);
   useEffect(() => subscribe(loadAlerts, "alerts"), [subscribe, loadAlerts]);
+
+  // Re-fetch whenever the socket (re)connects (e.g. after a backend
+  // restart), same pattern as AdminOverview.jsx/AdminRooms.jsx.
+  useEffect(() => {
+    if (!isConnected) return;
+    loadAlerts();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected]);
 
   useEffect(() => {
     if ("Notification" in window && Notification.permission === "default") {
@@ -96,7 +145,6 @@ export default function AdminAlertsPage() {
   const overdue = alerts?.overdue_checkouts ?? [];
   const balances = alerts?.overdue_balances ?? [];
   const unconfirmed = alerts?.unconfirmed ?? [];
-  const total = alerts?.total ?? 0;
 
   const setPage = (key, p) => setPages((prev) => ({ ...prev, [key]: p }));
 
@@ -122,9 +170,9 @@ export default function AdminAlertsPage() {
       <div data-component="AdminAlerts" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
         <PageHeading
           icon={IoNotificationsOutline}
-          badge={total > 0 && (
-            <span className="bg-red-600 text-white text-2xl font-bold rounded-full pb-1 pt-2 pl-1.5 pr-1 min-w-[2.5rem] text-center">
-              {total}
+          badge={alertCount > 0 && (
+            <span className="bg-red-600 text-white text-2xl font-bold rounded-full pb-1.5 pt-1 pl-2.5 pr-1 min-w-[2.5rem] text-center">
+              {alertCount}
             </span>
           )}
         >
@@ -140,12 +188,12 @@ export default function AdminAlertsPage() {
               className={`px-8 py-3 text-xl font-bold transition-colors border-b-2 -mb-px flex items-center gap-2 cursor-pointer ${
                 tab === key
                   ? "border-[color:var(--emphasis)] text-[color:var(--emphasis)]"
-                  : "border-transparent text-[color:var(--text-color)]/60 hover:text-[color:var(--text-color)]"
+                  : "border-transparent text-[color:var(--text-color)]/76 hover:text-[color:var(--text-color)]"
               }`}
             >
               {label}
               {count > 0 && (
-                <span className={`text-xl font-bold rounded-full pl-2 pr-1 pt-1 pb-.5 min-w-[1.4rem] text-center leading-tight ${
+                <span className={`text-xl font-bold rounded-full pl-3 pr-3.5 pt-1 pb-1.5 sm:pr-2 md:pt-2 min-w-[1.4rem] text-center leading-tight ${
                   tab === key ? "bg-[color:var(--emphasis)] text-white" : "bg-red-600 text-white"
                 }`}>
                   {count}
@@ -167,7 +215,7 @@ export default function AdminAlertsPage() {
                 <AllClear message="No missed check-ins." />
               ) : (
                 <div className="w-full flex flex-col gap-4">
-                  <p className="text-xl text-[color:var(--text-color)]/60">
+                  <p className="text-xl text-[color:var(--text-color)]/76">
                     Confirmed (paid) reservations whose check-in date has passed with no arrival recorded.
                   </p>
                   <div className={table.card}>
@@ -187,12 +235,12 @@ export default function AdminAlertsPage() {
                             <tr key={r.id} className={table.row}>
                               <td className={`${table.td} font-medium`}>
                                 <div>{r.guest_name}</div>
-                                <div className="text-base text-[color:var(--text-color)]/50">{r.booking_reference}</div>
+                                <div className="text-base text-[color:var(--text-color)]/68">{r.booking_reference}</div>
                               </td>
                               <td className={`${table.td} hidden md:table-cell`}>{r.room_type?.name || "N/A"}</td>
                               <td className={`${table.td} hidden md:table-cell`}>
                                 {formatDate(r.check_in)}
-                                <span className="ml-2 text-base text-orange-600 font-semibold">({daysAgo(r.check_in)})</span>
+                                <span className="ml-2 text-base text-orange-600 font-semibold">({calendarDaysAgo(r.check_in)})</span>
                               </td>
                               <td className={`${table.td} hidden md:table-cell`}><StatusBadge status={r.status} /></td>
                               <td className={table.td}>
@@ -226,7 +274,7 @@ export default function AdminAlertsPage() {
                 <AllClear message="No unconfirmed reservations." />
               ) : (
                 <div className="w-full flex flex-col gap-4">
-                  <p className="text-xl text-[color:var(--text-color)]/60">
+                  <p className="text-xl text-[color:var(--text-color)]/76">
                     Awaiting payment confirmation — auto-cancelled and released back to availability if left unconfirmed for too long.
                   </p>
                   <div className={table.card}>
@@ -246,12 +294,12 @@ export default function AdminAlertsPage() {
                             <tr key={r.id} className={table.row}>
                               <td className={`${table.td} font-medium`}>
                                 <div>{r.guest_name}</div>
-                                <div className="text-base text-[color:var(--text-color)]/50">{r.booking_reference}</div>
+                                <div className="text-base text-[color:var(--text-color)]/68">{r.booking_reference}</div>
                               </td>
                               <td className={`${table.td} hidden md:table-cell`}>{r.room_type?.name || "N/A"}</td>
                               <td className={`${table.td} hidden md:table-cell`}>{daysAgo(r.created_at)}</td>
                               <td className={table.td}>
-                                <span className="text-base text-orange-600 font-semibold">{timeUntil(r.expires_at)}</span>
+                                <span className="text-base text-orange-600 font-semibold">{timeUntil(r.expires_at, now)}</span>
                               </td>
                               <td className={table.td}>
                                 <div className={table.actions}>
@@ -277,7 +325,7 @@ export default function AdminAlertsPage() {
                 <AllClear message="No overdue checkouts." />
               ) : (
                 <div className="w-full flex flex-col gap-4">
-                  <p className="text-xl text-[color:var(--text-color)]/60">
+                  <p className="text-xl text-[color:var(--text-color)]/76">
                     Guests still in-house past their scheduled departure date.
                   </p>
                   <div className={table.card}>
@@ -296,12 +344,12 @@ export default function AdminAlertsPage() {
                             <tr key={r.id} className={table.row}>
                               <td className={`${table.td} font-medium`}>
                                 <div>{r.guest_name}</div>
-                                <div className="text-base text-[color:var(--text-color)]/50">{r.booking_reference}</div>
+                                <div className="text-base text-[color:var(--text-color)]/68">{r.booking_reference}</div>
                               </td>
                               <td className={`${table.td} hidden md:table-cell`}>{r.room_type?.name || "N/A"}</td>
                               <td className={`${table.td} hidden md:table-cell`}>
                                 {formatDate(r.check_out)}
-                                <span className="ml-2 text-base text-red-600 font-semibold">({daysAgo(r.check_out)})</span>
+                                <span className="ml-2 text-base text-red-600 font-semibold">({calendarDaysAgo(r.check_out)})</span>
                               </td>
                               <td className={table.td}>
                                 <div className={table.actions}>
@@ -327,7 +375,7 @@ export default function AdminAlertsPage() {
                 <AllClear message="No outstanding post-checkout balances." />
               ) : (
                 <div className="w-full flex flex-col gap-4">
-                  <p className="text-xl text-[color:var(--text-color)]/60">
+                  <p className="text-xl text-[color:var(--text-color)]/76">
                     Checked-out guests with an unpaid folio balance.
                   </p>
                   <div className={table.card}>
@@ -347,7 +395,7 @@ export default function AdminAlertsPage() {
                             <tr key={f.id} className={table.row}>
                               <td className={`${table.td} font-medium`}>
                                 <div>{f.reservation?.guest_name || "N/A"}</div>
-                                <div className="text-base text-[color:var(--text-color)]/50">{f.reservation?.booking_reference}</div>
+                                <div className="text-base text-[color:var(--text-color)]/68">{f.reservation?.booking_reference}</div>
                               </td>
                               <td className={`${table.td} hidden md:table-cell`}>{f.folio_number}</td>
                               <td className={`${table.td} hidden md:table-cell`}>{formatDate(f.reservation?.check_out)}</td>
@@ -380,7 +428,7 @@ function AllClear({ message }) {
   return (
     <div className="w-full flex flex-col items-center gap-4 py-20 text-center">
       <div className="text-6xl">✓</div>
-      <p className="text-2xl text-[color:var(--text-color)]/60">{message}</p>
+      <p className="text-2xl text-[color:var(--text-color)]/76">{message}</p>
     </div>
   );
 }

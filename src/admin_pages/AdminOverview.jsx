@@ -21,22 +21,40 @@ import { SERVER_BASE_URL } from "../utils/server-config";
 import Button from "../components/shared/Button";
 import PageHeading from "../components/shared/PageHeading";
 import StatusBadge from "../components/shared/StatusBadge";
-import { table } from "../components/shared/ui";
+import { table, field } from "../components/shared/ui";
 import { fetchCheckInList, fetchCheckOutList, fetchInHouse } from "../utils/front-office-api";
 import { fetchAlerts } from "../utils/alerts-api";
 import { fetchReportsDashboard } from "../utils/reports-api";
 import { fetchNightAuditHistory } from "../utils/night-audit-api";
 import { fetchReservations } from "../utils/reservations-pms-api";
+import { localTodayISO } from "../utils/date-utils";
 
-const todayISO = () => new Date().toISOString().split("T")[0];
+// Local-getter based, not toISOString() — toISOString() always converts to
+// UTC first, which for Lagos (WAT, UTC+1) silently reports the wrong
+// calendar date. monthStartISO in particular built a local-midnight Date
+// for the 1st of the month and always shifted it back to the last day of
+// the *previous* month once converted — a permanent off-by-one in the
+// "month to date" report range, not just a midnight edge case.
+const toLocalISO = (d) => {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+};
+const todayISO = () => localTodayISO();
 const monthStartISO = () => {
   const now = new Date();
-  return new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
+  return toLocalISO(new Date(now.getFullYear(), now.getMonth(), 1));
 };
 const yesterdayISO = () => {
   const d = new Date();
   d.setDate(d.getDate() - 1);
-  return d.toISOString().split("T")[0];
+  return toLocalISO(d);
+};
+const tomorrowISO = () => {
+  const d = new Date();
+  d.setDate(d.getDate() + 1);
+  return toLocalISO(d);
 };
 const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 const formatDate = (d) =>
@@ -44,7 +62,7 @@ const formatDate = (d) =>
 
 export default function AdminOverviewPage() {
   const navigate = useNavigate();
-  const [apiUrl, setApiUrl] = useState(SERVER_BASE_URL);
+  const [apiUrl] = useState(SERVER_BASE_URL);
   const [roomType, setRoomType] = useState("");
   const [roomTypes, setRoomTypes] = useState([]);
   const [roomDetails, setRoomDetails] = useState({
@@ -57,8 +75,13 @@ export default function AdminOverviewPage() {
   const [isProcessingUpdate, setIsProcessingUpdate] = useState(false);
   const [tempRoomCount, setTempRoomCount] = useState("");
   const [updateMessage, setUpdateMessage] = useState("");
-  const [errorMessage, setErrorMessage] = useState("");
   const [maintenanceMode, setMaintenanceMode] = useState(false);
+  // Room Inventory manual editor's own date window — defaults to today →
+  // tomorrow. A manual deduction only blocks capacity for this window (see
+  // getBasePool/getRoomDetails on the backend), so picking a longer range
+  // here is what makes a manual hold "stick" past a single night.
+  const [invCheckIn, setInvCheckIn] = useState(todayISO());
+  const [invCheckOut, setInvCheckOut] = useState(tomorrowISO());
 
   // ── Dashboard data (composed from existing endpoints, all JWT branch-scoped) ──
   const [glance, setGlance] = useState({ arrivals: null, departures: null, inHouse: null });
@@ -75,7 +98,7 @@ export default function AdminOverviewPage() {
   const loadRoomData = useCallback(async (showLoading = true) => {
     try {
       if (showLoading) setIsLoading(true);
-      const data = await fetchRoomDetails();
+      const data = await fetchRoomDetails(invCheckIn, invCheckOut);
       const types = data.room_types || [];
       setRoomTypes(types);
 
@@ -103,7 +126,7 @@ export default function AdminOverviewPage() {
     } finally {
       if (showLoading) setIsLoading(false);
     }
-  }, [roomType]);
+  }, [roomType, invCheckIn, invCheckOut]);
 
   const loadRoomDataRef = useRef(loadRoomData);
   useEffect(() => { loadRoomDataRef.current = loadRoomData; }, [loadRoomData]);
@@ -200,7 +223,6 @@ export default function AdminOverviewPage() {
   const handleUpdateRoomCount = async () => {
     setIsProcessingUpdate(true);
     setUpdateMessage("");
-    setErrorMessage("");
 
     try {
       const roomTypeData = roomTypes.find((rt) => rt.room_type_name === roomType);
@@ -213,7 +235,7 @@ export default function AdminOverviewPage() {
 
       const response = await axios.post(
         `${baseUrl}/api/rooms/manual-update`,
-        { room_type_id: roomTypeId, new_room_count: newCount },
+        { room_type_id: roomTypeId, new_room_count: newCount, check_in: invCheckIn, check_out: invCheckOut },
         { headers: { "Content-Type": "application/json" } }
       );
 
@@ -273,7 +295,7 @@ export default function AdminOverviewPage() {
           {lastAudit !== undefined && (
             <button
               onClick={() => navigate("/admin/night-audit")}
-              className={`flex items-center gap-3 px-5 pt-[0.8rem] pb-[0.4rem] rounded-full text-xl font-semibold cursor-pointer transition-colors ${
+              className={`flex items-start gap-3 px-5 pt-[0.8rem] pb-[0.4rem] rounded-full text-xl font-semibold cursor-pointer transition-colors ${
                 auditCurrent
                   ? "bg-green-100 text-green-700 hover:bg-green-200"
                   : "bg-red-100 text-red-700 hover:bg-red-200"
@@ -295,7 +317,7 @@ export default function AdminOverviewPage() {
           alertTotal > 0 ? (
             <button
               onClick={() => navigate("/admin/alerts")}
-              className="w-full flex items-center justify-between gap-4 bg-orange-50 border border-orange-200 rounded-xl px-6 py-4 cursor-pointer hover:bg-orange-100 transition-colors text-left"
+              className="w-full flex items-center justify-between gap-12 bg-orange-50 border border-orange-200 rounded-xl px-6 py-4 cursor-pointer hover:bg-orange-100 transition-colors text-left"
             >
               <span className="flex items-center gap-4 text-xl text-orange-800">
                 <IoWarningOutline size={24} className="shrink-0 text-orange-600" />
@@ -320,7 +342,7 @@ export default function AdminOverviewPage() {
         )}
 
         {/* ── Today at a glance ── */}
-        <div className="w-full grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
           <GlanceCard
             icon={IoLogInOutline}
             label="Arrivals Today"
@@ -353,7 +375,7 @@ export default function AdminOverviewPage() {
 
         {/* ── Month to date ── */}
         {reportSummary && (
-          <div className="w-full grid grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="w-full grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <GlanceCard
               icon={IoCashOutline}
               label="Collected This Month"
@@ -367,7 +389,7 @@ export default function AdminOverviewPage() {
               label="Outstanding"
               value={money(reportTotals.total_outstanding)}
               sub="balance still owed"
-              onClick={() => navigate("/admin/folios")}
+              onClick={() => navigate("/admin/folios?tab=pending")}
               warn={Number(reportTotals.total_outstanding) > 0}
             />
             <GlanceCard
@@ -397,9 +419,9 @@ export default function AdminOverviewPage() {
                 </thead>
                 <tbody>
                   {isLoading ? (
-                    <tr><td colSpan="5" className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/50">Loading…</td></tr>
+                    <tr><td colSpan="5" className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">Loading…</td></tr>
                   ) : roomTypes.length === 0 ? (
-                    <tr><td colSpan="5" className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/50">No room types configured.</td></tr>
+                    <tr><td colSpan="5" className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No room types configured.</td></tr>
                   ) : (
                     roomTypes.map((rt) => {
                       const total = rt.max_capacity || 0;
@@ -420,7 +442,7 @@ export default function AdminOverviewPage() {
                                   style={{ width: `${pct}%` }}
                                 />
                               </div>
-                              <span className="text-lg text-[color:var(--text-color)]/60 w-14">{pct}%</span>
+                              <span className="text-lg text-[color:var(--text-color)]/76 w-14">{pct}%</span>
                             </div>
                           </td>
                         </tr>
@@ -442,9 +464,44 @@ export default function AdminOverviewPage() {
             </span>
           </div>
           <div className="bg-white p-8 rounded-xl border border-[color:var(--text-color)]/10 flex flex-col gap-6 w-full">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-xl">
+              <div>
+                <label className={field.label}>From</label>
+                <input
+                  type="date"
+                  value={invCheckIn}
+                  disabled={isEditing}
+                  onChange={(e) => {
+                    const v = e.target.value;
+                    setInvCheckIn(v);
+                    if (invCheckOut && v >= invCheckOut) {
+                      const d = new Date(`${v}T00:00:00`);
+                      d.setDate(d.getDate() + 1);
+                      setInvCheckOut(toLocalISO(d));
+                    }
+                  }}
+                  className={field.input}
+                />
+              </div>
+              <div>
+                <label className={field.label}>To</label>
+                <input
+                  type="date"
+                  value={invCheckOut}
+                  min={invCheckIn}
+                  disabled={isEditing}
+                  onChange={(e) => setInvCheckOut(e.target.value)}
+                  className={field.input}
+                />
+              </div>
+            </div>
+            <p className="text-lg text-[color:var(--text-color)]/68 -mt-2">
+              Manual changes below only block these rooms for the selected window — they're automatically released once the "To" date passes.
+            </p>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div className="p-6 bg-[color:var(--text-color)]/3 rounded-lg">
-                <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/50 mb-2">Room Category</p>
+                <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68 mb-2">Room Category</p>
                 <select
                   value={roomType}
                   onChange={(e) => setRoomType(e.target.value)}
@@ -460,7 +517,7 @@ export default function AdminOverviewPage() {
               </div>
 
               <div className="p-6 bg-[color:var(--text-color)]/3 rounded-lg relative group">
-                <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/50 mb-2">Available Rooms</p>
+                <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68 mb-2">Available Rooms</p>
                 {isEditing ? (
                   <div className="flex items-center gap-4">
                     <select
@@ -513,7 +570,7 @@ export default function AdminOverviewPage() {
               </div>
 
               <div className="p-6 bg-[color:var(--text-color)]/3 rounded-lg">
-                <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/50 mb-2">Max Capacity</p>
+                <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68 mb-2">Max Capacity</p>
                 <p className="text-4xl font-bold text-[color:var(--black)]">
                   {roomDetails.maxCapacity}
                 </p>
@@ -553,13 +610,13 @@ export default function AdminOverviewPage() {
                 </thead>
                 <tbody>
                   {recentBookings.length === 0 ? (
-                    <tr><td colSpan="5" className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/50">No bookings yet.</td></tr>
+                    <tr><td colSpan="5" className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No bookings yet.</td></tr>
                   ) : (
                     recentBookings.map((r) => (
                       <tr key={r.id} className={table.row}>
                         <td className={`${table.td} font-medium`}>
                           <div>{r.guest_name}</div>
-                          <div className="text-base text-[color:var(--text-color)]/50">{r.booking_reference}</div>
+                          <div className="text-base text-[color:var(--text-color)]/68">{r.booking_reference}</div>
                         </td>
                         <td className={`${table.td} hidden md:table-cell`}>{r.room_type?.name || "N/A"}</td>
                         <td className={`${table.td} hidden md:table-cell`}>{formatDate(r.check_in)}</td>
@@ -616,6 +673,11 @@ export default function AdminOverviewPage() {
   );
 }
 
+// `Icon` is used below as the JSX tag <Icon .../>; ESLint's no-unused-vars doesn't detect
+// JSX-only usage of a destructured function-parameter binding (confirmed with an isolated
+// repro — the identical destructure works fine as a variable declaration, so this is an
+// ESLint limitation, not dead code).
+// eslint-disable-next-line no-unused-vars
 function GlanceCard({ icon: Icon, label, value, sub, onClick, accent, warn }) {
   return (
     <button
@@ -634,7 +696,7 @@ function GlanceCard({ icon: Icon, label, value, sub, onClick, accent, warn }) {
         }`}>
           <Icon size={18} />
         </span>
-        <p className={`text-xl font-semibold uppercase tracking-wide ${accent ? "text-white/70" : "text-[color:var(--text-color)]/50"}`}>
+        <p className={`text-xl font-semibold uppercase tracking-wide ${accent ? "text-white/70" : "text-[color:var(--text-color)]/68"}`}>
           {label}
         </p>
       </div>
@@ -642,7 +704,7 @@ function GlanceCard({ icon: Icon, label, value, sub, onClick, accent, warn }) {
         {value === null || value === undefined ? "…" : value}
       </p>
       {sub && (
-        <p className={`text-lg mt-1 ${accent ? "text-white/60" : "text-[color:var(--text-color)]/40"}`}>{sub}</p>
+        <p className={`text-lg mt-1 ${accent ? "text-white/60" : "text-[color:var(--text-color)]/60"}`}>{sub}</p>
       )}
     </button>
   );

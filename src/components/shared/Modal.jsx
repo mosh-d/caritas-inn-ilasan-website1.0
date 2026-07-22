@@ -55,12 +55,12 @@ export default function Modal({
                   <h2 className="text-3xl font-bold text-[color:var(--black)] leading-tight">{title}</h2>
                   {badge}
                 </div>
-                {subtitle && <p className="text-xl text-[color:var(--text-color)]/60 mt-1">{subtitle}</p>}
+                {subtitle && <p className="text-xl text-[color:var(--text-color)]/76 mt-1">{subtitle}</p>}
               </div>
               <button
                 onClick={onClose}
                 aria-label="Close dialog"
-                className="shrink-0 p-2 rounded-lg text-[color:var(--text-color)]/50 hover:text-[color:var(--black)] hover:bg-black/5 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-[color:var(--emphasis)]"
+                className="shrink-0 p-2 rounded-lg text-[color:var(--text-color)]/68 hover:text-[color:var(--black)] hover:bg-black/5 transition-colors cursor-pointer focus-visible:outline-2 focus-visible:outline-[color:var(--emphasis)]"
               >
                 <IoClose size={28} />
               </button>

@@ -1,18 +1,22 @@
 import { useState, useEffect, useCallback } from "react";
+import { useNavigate } from "react-router-dom";
 import { IoClose, IoLogOutOutline } from "react-icons/io5";
 import Modal from "../components/shared/Modal";
 import PageHeading from "../components/shared/PageHeading";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
-import { btn, field, table } from "../components/shared/ui";
+import { btn, table } from "../components/shared/ui";
 import { fetchCheckOutList } from "../utils/front-office-api";
 import { checkOutReservation } from "../utils/reservations-pms-api";
 import { fetchFolios } from "../utils/folios-api";
+import { localTodayISO } from "../utils/date-utils";
+import { useWebSocketContext } from "../context/WebSocketContext";
 
 const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A");
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-const todayISO = () => new Date().toISOString().split("T")[0];
+const todayISO = () => localTodayISO();
 
 export default function AdminCheckOutsPage() {
+  const navigate = useNavigate();
   const [date, setDate] = useState(todayISO());
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -31,7 +35,7 @@ export default function AdminCheckOutsPage() {
       setReservations(Array.isArray(result) ? result : []);
       setError(null);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load check-out list.");
+      setError((err.response?.data?.message || "Failed to load check-out list.") + " Please refresh the page.");
     } finally {
       setLoading(false);
     }
@@ -40,6 +44,15 @@ export default function AdminCheckOutsPage() {
   useEffect(() => {
     loadList();
   }, [loadList]);
+
+  // Re-fetch whenever the socket (re)connects (e.g. after a backend
+  // restart), same pattern as AdminOverview.jsx/AdminRooms.jsx.
+  const { isConnected } = useWebSocketContext();
+  useEffect(() => {
+    if (!isConnected) return;
+    loadList();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected]);
 
   const openCheckOut = async (reservation) => {
     setSelected(reservation);
@@ -85,13 +98,13 @@ export default function AdminCheckOutsPage() {
       )}
 
       <div data-component="AdminCheckOuts" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
-        <div className="w-full flex justify-between items-center max-sm:flex-col max-sm:items-start max-sm:gap-4">
+        <div className="flex flex-col justify-between items-start gap-4">
           <PageHeading icon={IoLogOutOutline}>Check-Out List</PageHeading>
           <input
             type="date"
             value={date}
             onChange={(e) => setDate(e.target.value)}
-            className={`${field.input} w-auto text-xl!`}
+            className={`border border-[color:var(--text-color)]/25 rounded-lg px-4 py-3 bg-white text-[color:var(--text-color)] placeholder:text-[color:var(--text-color)]/30 focus:outline-none focus:ring-2 focus:ring-[color:var(--emphasis)] focus:border-transparent transition-shadow text-xl!`}
           />
         </div>
 
@@ -112,7 +125,7 @@ export default function AdminCheckOutsPage() {
                 ) : error ? (
                   <tr><td colSpan="4" className="px-8 py-10 text-center text-red-600 text-xl">{error}</td></tr>
                 ) : reservations.length === 0 ? (
-                  <tr><td colSpan="4" className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/50">No expected check-outs for this date.</td></tr>
+                  <tr><td colSpan="4" className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">No expected check-outs for this date.</td></tr>
                 ) : (
                   reservations.map((r) => (
                     <tr key={r.id} className={table.row}>
@@ -157,12 +170,21 @@ export default function AdminCheckOutsPage() {
               <span className="font-bold text-2xl">{money(folio.balance)}</span>
             </div>
           ) : (
-            <p className="text-xl text-[color:var(--text-color)]/60">No folio found for this reservation.</p>
+            <p className="text-xl text-[color:var(--text-color)]/76">No folio found for this reservation.</p>
           )}
           {balanceDue && (
-            <p className="text-xl text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-5 py-4">
-              ⚠ Outstanding balance — consider settling payment before checkout.
-            </p>
+            <div className="flex flex-col gap-3">
+              <p className="text-xl text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-5 py-4">
+                ⚠ Outstanding balance — consider settling payment before checkout.
+              </p>
+              <button
+                type="button"
+                onClick={() => navigate(`/admin/folios?reservation_id=${selected.id}`)}
+                className={`${btn.secondary} self-start`}
+              >
+                Go to Folio to Record Payment
+              </button>
+            </div>
           )}
         </Modal>
       )}

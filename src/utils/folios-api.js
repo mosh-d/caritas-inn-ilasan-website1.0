@@ -72,6 +72,13 @@ export const recordPayment = async (payload) => {
   return response.data;
 };
 
+export const recordRefund = async (payload) => {
+  const response = await axios.post(`${baseUrl}/api/payments/refund`, payload, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
 export const fetchPayments = async (params = {}) => {
   const response = await axios.get(`${baseUrl}/api/payments`, {
     headers: getAuthHeaders(),

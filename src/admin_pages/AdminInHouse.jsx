@@ -1,17 +1,32 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useMemo } from "react";
+import { useSearchParams } from "react-router-dom";
 import { IoClose, IoHomeOutline } from "react-icons/io5";
 import Modal from "../components/shared/Modal";
 import PageHeading from "../components/shared/PageHeading";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import RoomAssignmentPicker from "../components/shared/RoomAssignmentPicker";
+import ContactRow from "../components/shared/ContactRow";
 import { btn, field, table } from "../components/shared/ui";
 import { fetchInHouse, fetchInHouseById } from "../utils/front-office-api";
-import { checkOutReservation, extendStay, assignRoom } from "../utils/reservations-pms-api";
+import {
+  checkOutReservation,
+  extendStay,
+  assignRoom,
+  fetchRoomStatusList,
+  fetchReservationNotes,
+  addReservationNote,
+  deleteReservationNote,
+} from "../utils/reservations-pms-api";
 import { fetchFolios } from "../utils/folios-api";
+import { useWebSocketContext } from "../context/WebSocketContext";
+import { hasPassedNoonCutoff } from "../utils/date-utils";
+import RoomStatusTag from "../components/shared/RoomStatusTag";
+
+const roomStatusKey = (roomTypeId, roomNumber) => `${roomTypeId}::${roomNumber}`;
 
 const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A");
 const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
-const isOverdue = (checkOut) => checkOut && new Date(checkOut) < new Date();
+const isOverdue = (checkOut) => checkOut && hasPassedNoonCutoff(checkOut);
 
 export default function AdminInHousePage() {
   const [reservations, setReservations] = useState([]);
@@ -27,6 +42,30 @@ export default function AdminInHousePage() {
   const [newCheckOutDate, setNewCheckOutDate] = useState("");
   const [folio, setFolio] = useState(null);
   const [folioLoading, setFolioLoading] = useState(false);
+  const [roomStatusMap, setRoomStatusMap] = useState(new Map());
+  const [reservationNotes, setReservationNotes] = useState([]);
+  const [newNoteText, setNewNoteText] = useState("");
+  const [addingNote, setAddingNote] = useState(false);
+  const [deletingNoteId, setDeletingNoteId] = useState(null);
+  const [notesError, setNotesError] = useState("");
+  const [roomTypeFilter, setRoomTypeFilter] = useState("all");
+
+  const loadRoomStatus = useCallback(async () => {
+    try {
+      const data = await fetchRoomStatusList();
+      const map = new Map();
+      for (const rt of data.room_types || []) {
+        for (const r of rt.rooms) {
+          map.set(roomStatusKey(rt.room_type_id, r.room_number), r.display_status);
+        }
+      }
+      setRoomStatusMap(map);
+    } catch {
+      // Non-critical — the tag just won't show if this fails.
+    }
+  }, []);
+
+  useEffect(() => { loadRoomStatus(); }, [loadRoomStatus]);
 
   const loadList = useCallback(async () => {
     try {
@@ -35,7 +74,7 @@ export default function AdminInHousePage() {
       setReservations(Array.isArray(result) ? result : []);
       setError(null);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load in-house guest list.");
+      setError((err.response?.data?.message || "Failed to load in-house guest list.") + " Please refresh the page.");
     } finally {
       setLoading(false);
     }
@@ -44,6 +83,16 @@ export default function AdminInHousePage() {
   useEffect(() => {
     loadList();
   }, [loadList]);
+
+  // Re-fetch whenever the socket (re)connects (e.g. after a backend
+  // restart), same pattern as AdminOverview.jsx/AdminRooms.jsx.
+  const { isConnected } = useWebSocketContext();
+  useEffect(() => {
+    if (!isConnected) return;
+    loadList();
+    loadRoomStatus();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected]);
 
   const openDetail = async (reservation) => {
     setDetailLoading(true);
@@ -58,15 +107,44 @@ export default function AdminInHousePage() {
       setSelected(full);
       setFolio((folioResult?.data && folioResult.data[0]) || null);
       setNewCheckOutDate("");
+      setReservationNotes([]);
+      setNewNoteText("");
+      setNotesError("");
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to load guest detail.");
+      setError((err.response?.data?.message || "Failed to load guest detail.") + " Please refresh the page.");
     } finally {
       setDetailLoading(false);
       setFolioLoading(false);
     }
+    try {
+      const notes = await fetchReservationNotes(reservation.id);
+      setReservationNotes(Array.isArray(notes) ? notes : []);
+    } catch {
+      setReservationNotes([]);
+    }
   };
 
-  const closeDetail = () => { setSelected(null); setFolio(null); setModalError(""); };
+  // Lets other pages (Room Chart) deep-link straight to one guest's detail
+  // view, e.g. /admin/in-house?reservation_id=123 — clicking an "active"
+  // bar there routes here.
+  const [searchParams, setSearchParams] = useSearchParams();
+  useEffect(() => {
+    const id = searchParams.get("reservation_id");
+    if (id) {
+      openDetail({ id: Number(id) });
+      setSearchParams({}, { replace: true });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const closeDetail = () => {
+    setSelected(null);
+    setFolio(null);
+    setModalError("");
+    setReservationNotes([]);
+    setNewNoteText("");
+    setNotesError("");
+  };
   const balanceDue = folio && Number(folio.balance) > 0;
 
   const handleCheckOut = async () => {
@@ -101,6 +179,35 @@ export default function AdminInHousePage() {
     }
   };
 
+  const handleAddNote = async () => {
+    if (!selected || !newNoteText.trim()) return;
+    try {
+      setAddingNote(true);
+      setNotesError("");
+      const note = await addReservationNote(selected.id, newNoteText.trim());
+      setReservationNotes((prev) => [note, ...prev]);
+      setNewNoteText("");
+    } catch (err) {
+      setNotesError(err.response?.data?.message || "Failed to add note.");
+    } finally {
+      setAddingNote(false);
+    }
+  };
+
+  const handleDeleteNote = async (noteId) => {
+    if (!selected) return;
+    try {
+      setDeletingNoteId(noteId);
+      setNotesError("");
+      await deleteReservationNote(selected.id, noteId);
+      setReservationNotes((prev) => prev.filter((n) => n.id !== noteId));
+    } catch (err) {
+      setNotesError(err.response?.data?.message || "Failed to delete note.");
+    } finally {
+      setDeletingNoteId(null);
+    }
+  };
+
   const handleAssignRoom = async (roomNumbers) => {
     if (!selected) return;
     try {
@@ -118,6 +225,19 @@ export default function AdminInHousePage() {
     }
   };
 
+  const roomTypeOptions = useMemo(() => {
+    const seen = new Map();
+    for (const r of reservations) {
+      if (r.room_type?.id && !seen.has(r.room_type.id)) seen.set(r.room_type.id, r.room_type.name);
+    }
+    return Array.from(seen, ([id, name]) => ({ id, name })).sort((a, b) => a.name.localeCompare(b.name));
+  }, [reservations]);
+
+  const filteredReservations = useMemo(() => {
+    if (roomTypeFilter === "all") return reservations;
+    return reservations.filter((r) => String(r.room_type?.id) === roomTypeFilter);
+  }, [reservations, roomTypeFilter]);
+
   return (
     <>
       {successMessage && (
@@ -130,7 +250,19 @@ export default function AdminInHousePage() {
       )}
 
       <div data-component="AdminInHouse" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
-        <PageHeading icon={IoHomeOutline}>In-House Guests</PageHeading>
+        <div className="w-full flex flex-wrap items-center justify-between gap-4">
+          <PageHeading icon={IoHomeOutline}>In-House Guests</PageHeading>
+          <select
+            value={roomTypeFilter}
+            onChange={(e) => setRoomTypeFilter(e.target.value)}
+            className={`${field.select} w-auto text-xl!`}
+          >
+            <option value="all">All Room Categories</option>
+            {roomTypeOptions.map((rt) => (
+              <option key={rt.id} value={rt.id}>{rt.name}</option>
+            ))}
+          </select>
+        </div>
 
         <div className={table.card}>
           <div className={table.scroll}>
@@ -149,17 +281,30 @@ export default function AdminInHousePage() {
                   <tr><td colSpan="5" className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
                 ) : error ? (
                   <tr><td colSpan="5" className="px-8 py-10 text-center text-red-600 text-xl">{error}</td></tr>
-                ) : reservations.length === 0 ? (
-                  <tr><td colSpan="5" className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/50">No guests currently in-house.</td></tr>
+                ) : filteredReservations.length === 0 ? (
+                  <tr><td colSpan="5" className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">
+                    {reservations.length === 0 ? "No guests currently in-house." : "No guests in-house match this room category."}
+                  </td></tr>
                 ) : (
-                  reservations.map((r) => (
+                  filteredReservations.map((r) => (
                     <tr key={r.id} className={table.row}>
-                      <td className={`${table.td} font-medium`}>{r.guest_name}</td>
-                      <td className={`${table.td} hidden md:table-cell`}>
-                        {(r.room_assignments || []).map((ra) => ra.room_number).join(", ") || "Unassigned"}
+                      <td className={`${table.td} align-top font-medium`}>{r.guest_name}</td>
+                      <td className={`${table.td} align-top hidden md:table-cell`}>
+                        {(r.room_assignments || []).length === 0 ? (
+                          "Unassigned"
+                        ) : (
+                          <div className="flex flex-col flex-wrap gap-1.5">
+                            {r.room_assignments.map((ra) => (
+                              <span key={ra.id} className="flex items-center gap-1.5 whitespace-nowrap">
+                                {ra.room_number}
+                                <RoomStatusTag status={roomStatusMap.get(roomStatusKey(ra.room_type_id, ra.room_number))} />
+                              </span>
+                            ))}
+                          </div>
+                        )}
                       </td>
-                      <td className={`${table.td} hidden md:table-cell`}>{formatDate(r.actual_check_in)}</td>
-                      <td className={table.td}>
+                      <td className={`${table.td} align-top hidden md:table-cell`}>{formatDate(r.actual_check_in)}</td>
+                      <td className={`${table.td} align-top`}>
                         <div className="flex items-center gap-3">
                           {formatDate(r.check_out)}
                           {isOverdue(r.check_out) && (
@@ -167,7 +312,7 @@ export default function AdminInHousePage() {
                           )}
                         </div>
                       </td>
-                      <td className={table.td}>
+                      <td className={`${table.td} align-top`}>
                         <div className={table.actions}>
                           <button onClick={() => openDetail(r)} className={btn.rowPrimary}>View</button>
                         </div>
@@ -209,11 +354,11 @@ export default function AdminInHousePage() {
                 <p className="text-red-600 text-xl bg-red-50 border border-red-200 rounded-lg px-4 py-3">{modalError}</p>
               )}
 
-              <div className="grid grid-cols-2 gap-4 max-sm:grid-cols-1">
-                <InfoRow label="Email" value={selected.guest_email || "N/A"} />
-                <InfoRow label="Phone" value={selected.phone_number || "N/A"} />
-                <InfoRow label="Checked In" value={formatDate(selected.actual_check_in)} />
-                <InfoRow label="Expected Check-Out" value={formatDate(selected.check_out)} />
+              <div className="grid grid-cols-1 gap-4">
+                <ContactRow type="email" value={selected.guest_email} />
+                <ContactRow type="phone" value={selected.phone_number} />
+                <DetailRow label="Checked In" value={formatDate(selected.actual_check_in)} />
+                <DetailRow label="Expected Check-Out" value={formatDate(selected.check_out)} />
               </div>
 
               {folioLoading ? (
@@ -224,13 +369,61 @@ export default function AdminInHousePage() {
                   <span className="font-bold text-2xl">{money(folio.balance)}</span>
                 </div>
               ) : (
-                <p className="text-xl text-[color:var(--text-color)]/60">No folio found for this reservation.</p>
+                <p className="text-xl text-[color:var(--text-color)]/76">No folio found for this reservation.</p>
               )}
               {balanceDue && (
                 <p className="text-xl text-orange-600 bg-orange-50 border border-orange-200 rounded-lg px-5 py-4">
                   ⚠ Outstanding balance — consider settling payment before checkout.
                 </p>
               )}
+
+              <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
+                <h3 className="text-2xl font-bold text-[color:var(--black)]">Notes</h3>
+                <p className="text-lg text-[color:var(--text-color)]/60 -mt-2">
+                  Notes for this stay (e.g. "Arriving late") — shows up in the Manifest report. Separate from Special Requests on the Reservations page.
+                </p>
+                {notesError && (
+                  <p className="text-lg text-red-600 bg-red-50 border border-red-200 rounded-lg px-4 py-3">{notesError}</p>
+                )}
+                {reservationNotes.length === 0 ? (
+                  <p className="text-xl text-[color:var(--text-color)]/76">No notes yet.</p>
+                ) : (
+                  <div className="flex flex-col gap-2">
+                    {reservationNotes.map((n) => (
+                      <div key={n.id} className="flex justify-between items-center gap-4 bg-[color:var(--text-color)]/3 rounded-lg px-5 py-3 text-xl">
+                        <span className="break-words">{n.note}</span>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteNote(n.id)}
+                          disabled={deletingNoteId === n.id}
+                          className="p-1 text-[color:var(--text-color)]/50 hover:text-red-600 transition-colors cursor-pointer shrink-0"
+                          aria-label="Delete note"
+                        >
+                          <IoClose size={20} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="flex gap-3 items-center flex-wrap">
+                  <input
+                    type="text"
+                    value={newNoteText}
+                    onChange={(e) => setNewNoteText(e.target.value)}
+                    onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); handleAddNote(); } }}
+                    placeholder="e.g. Arriving late"
+                    className={`${field.input} w-auto flex-1 min-w-[16rem]`}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleAddNote}
+                    disabled={addingNote || !newNoteText.trim()}
+                    className={btn.secondary}
+                  >
+                    {addingNote ? "Adding..." : "+ Add Note"}
+                  </button>
+                </div>
+              </section>
 
               <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
                 <h3 className="text-2xl font-bold text-[color:var(--black)]">Room Assignments</h3>
@@ -265,11 +458,11 @@ export default function AdminInHousePage() {
   );
 }
 
-function InfoRow({ label, value }) {
+function DetailRow({ label, value }) {
   return (
-    <div className="flex justify-between items-center gap-4 bg-[color:var(--text-color)]/3 rounded-lg px-5 py-3 text-xl">
-      <span className="font-semibold text-[color:var(--text-color)]/50 uppercase tracking-wide text-lg whitespace-nowrap">{label}</span>
-      <span className="font-medium truncate">{value}</span>
+    <div className="bg-[color:var(--text-color)]/3 rounded-lg px-5 py-3 text-xl w-full">
+      <span className="block font-semibold text-[color:var(--text-color)]/68 uppercase tracking-wide text-lg">{label}</span>
+      <span className="block font-medium break-words">{value}</span>
     </div>
   );
 }

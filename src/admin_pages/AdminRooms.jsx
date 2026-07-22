@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import axios from "axios";
 import { IoClose, IoBedOutline } from "react-icons/io5";
 import Modal from "../components/shared/Modal";
@@ -8,6 +8,7 @@ import { btn, field, table } from "../components/shared/ui";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import { canManageRoomPrices, getAuthHeaders } from "../utils/auth";
 import { SERVER_BASE_URL } from "../utils/server-config";
+import RoomStatusTag from "../components/shared/RoomStatusTag";
 
 // ─── API Setup ────────────────────────────────────────────────────────────────
 
@@ -24,6 +25,9 @@ const getBaseUrl = () =>
 
 const formatPrice = (price) =>
   Number(price).toLocaleString("en-NG", { minimumFractionDigits: 0 });
+
+const formatDateTime = (d) =>
+  d ? new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" }) : "";
 
 // ─── Add Room Modal ────────────────────────────────────────────────────────────
 
@@ -247,6 +251,61 @@ function ViewRoomModal({
   const [deleting, setDeleting] = useState(false);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  // Reducing capacity can delete room_inventory rows outright (see
+  // updateRoomCapacity on the backend) — confirm before firing, same as the
+  // room-status confirmation below.
+  const [confirmCapacityDecrease, setConfirmCapacityDecrease] = useState(false);
+
+  const [editingDetails, setEditingDetails] = useState(false);
+  const [detailsForm, setDetailsForm] = useState({
+    summary: room.summary || "",
+    amenities: room.amenities || "",
+    adult_capacity: String(room.adult_capacity ?? ""),
+    child_capacity: String(room.child_capacity ?? ""),
+  });
+  const [savingDetails, setSavingDetails] = useState(false);
+
+  const [physicalRooms, setPhysicalRooms] = useState(null);
+  const [loadingStatus, setLoadingStatus] = useState(true);
+  const [statusUpdatingId, setStatusUpdatingId] = useState(null);
+  const [confirmStatusChange, setConfirmStatusChange] = useState(null); // { roomInventoryId, roomNumber, newStatus }
+  // Collapsed by default — a room type with many physical rooms otherwise
+  // makes this modal scroll a long way before reaching Delete/Close.
+  const [physicalRoomsExpanded, setPhysicalRoomsExpanded] = useState(false);
+
+  // Only shows the spinner on the true first load — a websocket-triggered
+  // refresh (below) updates the list silently in the background instead of
+  // flashing back to "loading" every time.
+  const hasLoadedRoomStatusRef = useRef(false);
+  const loadRoomStatusList = useCallback(async () => {
+    if (!hasLoadedRoomStatusRef.current) setLoadingStatus(true);
+    try {
+      const res = await axios.get(`${getBaseUrl()}/api/rooms/status`, {
+        headers: getAuthHeaders(),
+        withCredentials: true,
+      });
+      const match = (res.data?.room_types || []).find((rt) => rt.room_type_id === room.room_type_id);
+      setPhysicalRooms(match?.rooms || []);
+      hasLoadedRoomStatusRef.current = true;
+    } catch (err) {
+      console.error("AdminRooms: Failed to load room status list:", err);
+      setPhysicalRooms((prev) => prev ?? []);
+    } finally {
+      setLoadingStatus(false);
+    }
+  }, [room.room_type_id]);
+
+  useEffect(() => {
+    loadRoomStatusList();
+  }, [loadRoomStatusList]);
+
+  // Room numbers/status can arrive or change out from under an already-open
+  // modal (another tab assigns a number, capacity changes elsewhere, a
+  // reservation checks in) — re-fetch on the same 'rooms_updated' broadcast
+  // every other room-aware page already listens for, instead of only ever
+  // fetching once when the modal happens to open.
+  const { subscribe: subscribeRoomStatus } = useWebSocketContext();
+  useEffect(() => subscribeRoomStatus(loadRoomStatusList, "rooms"), [subscribeRoomStatus, loadRoomStatusList]);
 
   // Safety fetches after data update - ensures consistency
   const runSafetyFetches = async () => {
@@ -346,6 +405,12 @@ function ViewRoomModal({
       return;
     }
 
+    if (newCapacity < Number(room.max_capacity) && !confirmCapacityDecrease) {
+      setConfirmCapacityDecrease(true);
+      return;
+    }
+    setConfirmCapacityDecrease(false);
+
     console.log(
       `AdminRooms: Updating capacity for room_type_id=${room.room_type_id} to ${newCapacity}`
     );
@@ -391,6 +456,56 @@ function ViewRoomModal({
     }
   };
 
+  const handleSaveDetails = async () => {
+    setSavingDetails(true);
+    try {
+      const res = await axios.patch(
+        `${getBaseUrl()}/api/rooms/type/${room.room_type_id}`,
+        {
+          summary: detailsForm.summary,
+          amenities: detailsForm.amenities,
+          adult_capacity: Number(detailsForm.adult_capacity),
+          child_capacity: Number(detailsForm.child_capacity),
+        },
+        { headers: getAuthHeaders(), withCredentials: true },
+      );
+      onSuccess("Room details updated.");
+      setEditingDetails(false);
+      // Formatting happens server-side (lowercase, spaces->underscores) —
+      // reflect the actual saved value, not the raw text just typed.
+      if (res.data?.amenities !== undefined) {
+        setDetailsForm((f) => ({ ...f, amenities: res.data.amenities }));
+      }
+      runSafetyFetches();
+    } catch (err) {
+      onError(err.response?.data?.message || "Failed to update room details.");
+    } finally {
+      setSavingDetails(false);
+    }
+  };
+
+  const handleSetRoomStatus = async (roomInventoryId, roomNumber, newStatus, currentDisplayStatus) => {
+    if (currentDisplayStatus === "occupied" && !confirmStatusChange) {
+      setConfirmStatusChange({ roomInventoryId, roomNumber, newStatus });
+      return;
+    }
+    setConfirmStatusChange(null);
+    setStatusUpdatingId(roomInventoryId);
+    try {
+      await axios.patch(
+        `${getBaseUrl()}/api/rooms/inventory/${roomInventoryId}/status`,
+        { status: newStatus },
+        { headers: getAuthHeaders(), withCredentials: true },
+      );
+      onSuccess(`Room ${roomNumber} marked ${newStatus.replace(/_/g, " ")}.`);
+      await loadRoomStatusList();
+    } catch (err) {
+      onError(err.response?.data?.message || "Failed to update room status.");
+    } finally {
+      setStatusUpdatingId(null);
+    }
+  };
+
   const handleDelete = async () => {
     if (!confirmDelete) {
       setConfirmDelete(true);
@@ -433,7 +548,7 @@ function ViewRoomModal({
       onClose={onClose}
       title={room.room_type_name}
       subtitle={`${room.available_rooms ?? "N/A"} room(s) currently available`}
-      size="md"
+      size="lg"
       footer={
         <>
           <button
@@ -452,32 +567,160 @@ function ViewRoomModal({
         </>
       }
     >
-      {/* Read-only overview */}
+      {/* Available Rooms is always live/computed — Adult/Child capacity, Summary,
+          and Amenities are editable via updateRoomTypeDetails (previously
+          settable only at creation time). */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <StatCard label="Available Rooms" value={room.available_rooms ?? "N/A"} />
-        <StatCard label="Adult Capacity" value={room.adult_capacity ?? "N/A"} />
-        <StatCard label="Child Capacity" value={room.child_capacity ?? "N/A"} />
+        <StatCard label="Adult Capacity" value={editingDetails ? "—" : room.adult_capacity ?? "N/A"} />
+        <StatCard label="Child Capacity" value={editingDetails ? "—" : room.child_capacity ?? "N/A"} />
       </div>
 
-      {room.summary && (
-        <section className="flex flex-col gap-2">
-          <h3 className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/50">Summary</h3>
-          <p className="text-xl leading-relaxed">{room.summary}</p>
-        </section>
-      )}
+      <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
+        <div className="flex justify-between items-center">
+          <h3 className="text-2xl font-bold text-[color:var(--black)]">Summary, Amenities & Capacity</h3>
+          {!editingDetails && (
+            <button onClick={() => setEditingDetails(true)} className={btn.secondary}>Edit</button>
+          )}
+        </div>
 
-      {room.amenities && (
-        <section className="flex flex-col gap-2">
-          <h3 className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/50">Amenities</h3>
-          <div className="flex flex-wrap gap-2">
-            {String(room.amenities).split(",").map((a, i) => (
-              <span key={i} className="text-lg bg-[color:var(--text-color)]/5 px-4 py-1.5 rounded-full">
-                {a.trim()}
-              </span>
+        {editingDetails ? (
+          <>
+            <div className="flex flex-col gap-2">
+              <label className={field.label}>Summary</label>
+              <textarea
+                value={detailsForm.summary}
+                onChange={(e) => setDetailsForm({ ...detailsForm, summary: e.target.value })}
+                className={field.textarea}
+              />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className={field.label}>Amenities (comma-separated)</label>
+              <input
+                type="text"
+                placeholder="e.g. Free WiFi, AC, King Size Bed"
+                value={detailsForm.amenities}
+                onChange={(e) => setDetailsForm({ ...detailsForm, amenities: e.target.value })}
+                className={field.input}
+              />
+              <p className="text-base text-[color:var(--text-color)]/60">
+                Auto-formatted to match the public site's icon set — "Free WiFi" is saved as "free_wifi".
+              </p>
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <div className="flex flex-col gap-2">
+                <label className={field.label}>Adult Capacity</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={detailsForm.adult_capacity}
+                  onChange={(e) => setDetailsForm({ ...detailsForm, adult_capacity: e.target.value })}
+                  className={field.input}
+                />
+              </div>
+              <div className="flex flex-col gap-2">
+                <label className={field.label}>Child Capacity</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={detailsForm.child_capacity}
+                  onChange={(e) => setDetailsForm({ ...detailsForm, child_capacity: e.target.value })}
+                  className={field.input}
+                />
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <button
+                onClick={() => {
+                  setEditingDetails(false);
+                  setDetailsForm({
+                    summary: room.summary || "",
+                    amenities: room.amenities || "",
+                    adult_capacity: String(room.adult_capacity ?? ""),
+                    child_capacity: String(room.child_capacity ?? ""),
+                  });
+                }}
+                className={btn.secondary}
+              >
+                Cancel
+              </button>
+              <button onClick={handleSaveDetails} disabled={savingDetails} className={btn.primary}>
+                {savingDetails ? "Saving..." : "Save"}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            {room.summary && <p className="text-xl leading-relaxed">{room.summary}</p>}
+            {room.amenities ? (
+              <div className="flex flex-wrap gap-2">
+                {String(room.amenities).split(",").map((a, i) => (
+                  <span key={i} className="text-lg bg-[color:var(--text-color)]/5 px-4 py-1.5 rounded-full capitalize">
+                    {a.trim().replace(/_/g, " ")}
+                  </span>
+                ))}
+              </div>
+            ) : (
+              <p className="text-xl text-[color:var(--text-color)]/60">No amenities listed yet.</p>
+            )}
+          </>
+        )}
+      </section>
+
+      {/* Physical Rooms — persistent status per numbered room. Occupied is
+          always live-derived (never a manual flag) so it can't drift from
+          reality; Out of Order / Complementary are the manual flags staff
+          set here. */}
+      <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
+        <button
+          type="button"
+          onClick={() => setPhysicalRoomsExpanded((v) => !v)}
+          className="flex items-center justify-between w-full cursor-pointer"
+        >
+          <h3 className="text-2xl font-bold text-[color:var(--black)]">
+            Physical Rooms {physicalRooms && <span className="text-lg font-normal text-[color:var(--text-color)]/60">({physicalRooms.length})</span>}
+          </h3>
+          <span className="text-lg text-[color:var(--text-color)]/60">{physicalRoomsExpanded ? "Hide ▲" : "Show ▼"}</span>
+        </button>
+        {physicalRoomsExpanded && (
+        loadingStatus ? (
+          <LoadingSpinner />
+        ) : !physicalRooms || physicalRooms.length === 0 ? (
+          <p className="text-xl text-[color:var(--text-color)]/76">No numbered rooms yet.</p>
+        ) : (
+          <div className="flex flex-col gap-2">
+            {physicalRooms.map((r) => (
+              <div
+                key={r.room_inventory_id}
+                className="flex items-center justify-between gap-4 flex-wrap bg-[color:var(--text-color)]/3 rounded-lg px-5 py-3"
+              >
+                <div className="flex items-center gap-3 flex-wrap">
+                  <span className="text-xl font-semibold">{r.room_number}</span>
+                  <RoomStatusTag status={r.display_status} />
+                  {r.status_changed_at && r.manual_status !== "available" && (
+                    <span className="text-base text-[color:var(--text-color)]/60">
+                      since {formatDateTime(r.status_changed_at)}
+                    </span>
+                  )}
+                </div>
+                <select
+                  value={r.manual_status}
+                  disabled={statusUpdatingId === r.room_inventory_id}
+                  onChange={(e) =>
+                    handleSetRoomStatus(r.room_inventory_id, r.room_number, e.target.value, r.display_status)
+                  }
+                  className={`${field.select} w-auto`}
+                >
+                  <option value="available">Available</option>
+                  <option value="out_of_order">Out of Order</option>
+                  <option value="complementary">Complementary</option>
+                </select>
+              </div>
             ))}
           </div>
-        </section>
-      )}
+        )
+        )}
+      </section>
 
       {/* Editable: Base Price */}
       <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
@@ -526,6 +769,78 @@ function ViewRoomModal({
         </div>
       </section>
 
+      {/* ── Capacity Decrease Confirmation ── */}
+      {confirmCapacityDecrease && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setConfirmCapacityDecrease(false)} />
+          <div className="relative z-10 bg-white rounded-2xl shadow-2xl max-w-md w-full p-10 flex flex-col gap-6 text-center font-primary">
+            <div className="text-orange-500 flex justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-16 h-16">
+                <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-3xl font-bold text-[color:var(--text-color)] tracking-wide mb-2">Reduce Room Count?</h3>
+              <p className="text-xl text-[color:var(--text-color)]/84 leading-relaxed">
+                Reducing capacity from <span className="font-bold">{room.max_capacity}</span> to{" "}
+                <span className="font-bold">{capacityInput}</span> can permanently delete physical room rows (never
+                one a guest is currently in or has booked). This cannot be undone.
+              </p>
+            </div>
+            <div className="flex gap-4 justify-center pt-2">
+              <button onClick={() => setConfirmCapacityDecrease(false)} className={btn.secondary}>Cancel</button>
+              <button onClick={handleUpdateCapacity} disabled={updatingCapacity} className={btn.dangerSolid}>
+                {updatingCapacity ? "Reducing..." : "Yes, Reduce"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Occupied-Room Status-Change Confirmation ── */}
+      {confirmStatusChange && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-black/50" onClick={() => setConfirmStatusChange(null)} />
+          <div className="relative z-10 bg-white rounded-2xl shadow-2xl max-w-md w-full p-10 flex flex-col gap-6 text-center font-primary">
+            <div className="text-orange-500 flex justify-center">
+              <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" className="w-16 h-16">
+                <path fillRule="evenodd" d="M9.401 3.003c1.155-2 4.043-2 5.197 0l7.355 12.748c1.154 2-.29 4.5-2.599 4.5H4.645c-2.309 0-3.752-2.5-2.598-4.5L9.4 3.003ZM12 8.25a.75.75 0 0 1 .75.75v3.75a.75.75 0 0 1-1.5 0V9a.75.75 0 0 1 .75-.75Zm0 8.25a.75.75 0 1 0 0-1.5.75.75 0 0 0 0 1.5Z" clipRule="evenodd" />
+              </svg>
+            </div>
+            <div>
+              <h3 className="text-3xl font-bold text-[color:var(--text-color)] tracking-wide mb-2">
+                Room {confirmStatusChange.roomNumber} is Occupied
+              </h3>
+              <p className="text-xl text-[color:var(--text-color)]/84 leading-relaxed">
+                {confirmStatusChange.newStatus === "complementary"
+                  ? "Marking this room complementary while a guest is staying in it will zero out their room charge on this stay's folio."
+                  : "This room currently has a guest checked in. Marking it out of order won't remove them, but flags the room for maintenance once they leave."}
+              </p>
+            </div>
+            <div className="flex gap-4 justify-center pt-2">
+              <button onClick={() => setConfirmStatusChange(null)} className={btn.secondary}>Cancel</button>
+              <button
+                onClick={() =>
+                  // confirmStatusChange is already set, so handleSetRoomStatus's
+                  // guard is skipped regardless of what's passed here — this call
+                  // is the "already confirmed" path.
+                  handleSetRoomStatus(
+                    confirmStatusChange.roomInventoryId,
+                    confirmStatusChange.roomNumber,
+                    confirmStatusChange.newStatus,
+                    null,
+                  )
+                }
+                disabled={statusUpdatingId === confirmStatusChange.roomInventoryId}
+                className={btn.dangerSolid}
+              >
+                {statusUpdatingId === confirmStatusChange.roomInventoryId ? "Applying..." : "Yes, Continue"}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Delete Confirmation Dialog ── */}
       {confirmDelete && (
         <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
@@ -557,7 +872,7 @@ function ViewRoomModal({
               <h3 className="text-3xl font-bold text-[color:var(--text-color)] tracking-wide mb-2">
                 Delete Room Type?
               </h3>
-              <p className="text-xl text-[color:var(--text-color)]/70 leading-relaxed">
+              <p className="text-xl text-[color:var(--text-color)]/84 leading-relaxed">
                 You are about to permanently remove{" "}
                 <span className="font-bold text-[color:var(--text-color)]">
                   {room.room_type_name}
@@ -596,7 +911,7 @@ function ViewRoomModal({
 function StatCard({ label, value }) {
   return (
     <div className="bg-[color:var(--text-color)]/3 rounded-lg px-5 py-4">
-      <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/50 mb-1">{label}</p>
+      <p className="text-lg font-semibold uppercase tracking-wide text-[color:var(--text-color)]/68 mb-1">{label}</p>
       <p className="text-2xl font-bold text-[color:var(--black)]">{value}</p>
     </div>
   );
@@ -908,7 +1223,7 @@ export default function AdminRoomsPage() {
                   </tr>
                 ) : rooms.length === 0 ? (
                   <tr>
-                    <td colSpan="3" className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/50">
+                    <td colSpan="3" className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">
                       No rooms found for this branch.
                     </td>
                   </tr>

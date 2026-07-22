@@ -41,3 +41,24 @@ export const updateGuest = async (id, payload) => {
   });
   return response.data;
 };
+
+export const fetchGuestNotes = async (id) => {
+  const response = await axios.get(`${baseUrl}/api/guests/${id}/notes`, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
+export const addGuestNote = async (id, note) => {
+  const response = await axios.post(`${baseUrl}/api/guests/${id}/notes`, { note }, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};
+
+export const deleteGuestNote = async (id, noteId) => {
+  const response = await axios.delete(`${baseUrl}/api/guests/${id}/notes/${noteId}`, {
+    headers: getAuthHeaders(),
+  });
+  return response.data;
+};

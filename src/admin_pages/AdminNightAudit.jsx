@@ -5,6 +5,7 @@ import Button from "../components/shared/Button";
 import PageHeading from "../components/shared/PageHeading";
 import { table } from "../components/shared/ui";
 import { runNightAudit, fetchNightAuditHistory } from "../utils/night-audit-api";
+import { useWebSocketContext } from "../context/WebSocketContext";
 
 const money = (v) =>
   `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
@@ -21,7 +22,10 @@ const formatDate = (d) =>
 function yesterday() {
   const d = new Date();
   d.setDate(d.getDate() - 1);
-  return d.toISOString().split("T")[0];
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
 }
 
 const PAGE_SIZE = 10;
@@ -47,13 +51,22 @@ export default function AdminNightAudit() {
       setHistoryPage(page);
       setHistoryError(null);
     } catch (err) {
-      setHistoryError(err.response?.data?.message || "Failed to load audit history.");
+      setHistoryError((err.response?.data?.message || "Failed to load audit history.") + " Please refresh the page.");
     } finally {
       setHistoryLoading(false);
     }
   }, []);
 
   useEffect(() => { loadHistory(1); }, [loadHistory]);
+
+  // Re-fetch whenever the socket (re)connects (e.g. after a backend
+  // restart), same pattern as AdminOverview.jsx/AdminRooms.jsx.
+  const { isConnected } = useWebSocketContext();
+  useEffect(() => {
+    if (!isConnected) return;
+    loadHistory(1);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [isConnected]);
 
   const handleRun = async () => {
     if (!auditDate) return;
@@ -77,7 +90,7 @@ export default function AdminNightAudit() {
     <div data-component="AdminNightAudit" className="px-[4rem] max-sm:px-[1rem] py-[4rem] flex flex-col items-start gap-[3rem]">
       <div>
         <PageHeading icon={IoMoonOutline}>Night Audit</PageHeading>
-        <p className="text-2xl text-[color:var(--text-color)]/60 mt-2">
+        <p className="text-2xl text-[color:var(--text-color)]/76 mt-2">
           Posts nightly room charges to all in-house guest folios.
           Runs automatically at 2am if not triggered manually.
         </p>
@@ -89,7 +102,7 @@ export default function AdminNightAudit() {
 
         <div className="flex flex-wrap items-end gap-6">
           <div className="flex flex-col gap-2">
-            <label className="text-xl font-semibold text-[color:var(--text-color)]/70">Business Date</label>
+            <label className="text-xl font-semibold text-[color:var(--text-color)]/84">Business Date</label>
             <input
               type="date"
               value={auditDate}
@@ -102,7 +115,7 @@ export default function AdminNightAudit() {
             variant="emphasis"
             onClick={handleRun}
             disabled={running || !auditDate}
-            className={running || !auditDate ? "opacity-50 cursor-not-allowed" : ""}
+            className={`text-xl! pb-5 pt-4.5 rounded-xl ${running || !auditDate ? "opacity-50 cursor-not-allowed" : ""}`}
           >
             {running ? "Running..." : "Run Night Audit"}
           </Button>
@@ -144,13 +157,13 @@ export default function AdminNightAudit() {
                         <td className="px-6 py-3 font-medium">
                           <div>{d.guest_name}</div>
                           {d.booking_reference && (
-                            <div className="text-base text-[color:var(--text-color)]/50">{d.booking_reference}</div>
+                            <div className="text-base text-[color:var(--text-color)]/68">{d.booking_reference}</div>
                           )}
                         </td>
                         <td className="px-6 py-3 hidden md:table-cell">
                           {d.skipped ? "—" : `${d.room_type}${d.rooms_booked > 1 ? ` × ${d.rooms_booked}` : ""}`}
                         </td>
-                        <td className="px-6 py-3 hidden md:table-cell text-[color:var(--text-color)]/70">
+                        <td className="px-6 py-3 hidden md:table-cell text-[color:var(--text-color)]/84">
                           {d.folio_number || "—"}
                         </td>
                         <td className="px-6 py-3 text-right font-bold">
@@ -183,7 +196,7 @@ export default function AdminNightAudit() {
         ) : historyError ? (
           <p className="text-red-600 text-xl">{historyError}</p>
         ) : history.length === 0 ? (
-          <p className="text-2xl text-[color:var(--text-color)]/50">No audits have been run yet.</p>
+          <p className="text-2xl text-[color:var(--text-color)]/68">No audits have been run yet.</p>
         ) : (
           <>
             <div className={table.card}>
@@ -204,9 +217,9 @@ export default function AdminNightAudit() {
                     <tr key={a.id} className={table.row}>
                       <td className="px-6 py-4 font-bold">{formatDate(a.audit_date)}</td>
                       <td className="px-6 py-4 text-right hidden md:table-cell">{a.rooms_charged}</td>
-                      <td className="px-6 py-4 text-right hidden md:table-cell text-[color:var(--text-color)]/60">{a.skipped}</td>
+                      <td className="px-6 py-4 text-right hidden md:table-cell text-[color:var(--text-color)]/76">{a.skipped}</td>
                       <td className="px-6 py-4 text-right font-bold text-green-700">{money(a.total_posted)}</td>
-                      <td className="px-6 py-4 hidden md:table-cell text-[color:var(--text-color)]/70 text-xl">
+                      <td className="px-6 py-4 hidden md:table-cell text-[color:var(--text-color)]/84 text-xl">
                         {a.audited_at
                           ? new Date(a.audited_at).toLocaleTimeString("en-GB", { hour: "2-digit", minute: "2-digit" })
                           : "—"}
@@ -254,7 +267,7 @@ export default function AdminNightAudit() {
 function StatCard({ label, value, accent, warn }) {
   return (
     <div className={`rounded-xl border p-5 ${accent ? "bg-[color:var(--emphasis)] border-transparent text-white" : warn ? "bg-orange-50 border-orange-200" : "bg-white border-[color:var(--text-color)]/15"}`}>
-      <p className={`text-xl font-semibold uppercase tracking-wide mb-1 ${accent ? "text-white/70" : "text-[color:var(--text-color)]/50"}`}>
+      <p className={`text-xl font-semibold uppercase tracking-wide mb-1 ${accent ? "text-white/70" : "text-[color:var(--text-color)]/68"}`}>
         {label}
       </p>
       <p className={`text-3xl font-bold ${accent ? "text-white" : warn ? "text-orange-600" : "text-[color:var(--black)]"}`}>

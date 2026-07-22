@@ -6,6 +6,7 @@ import CustomInput from "../components/shared/CustomInput";
 import DatePicker from "../components/shared/DatePicker";
 import Footer from "../components/shared/Footer";
 import { createReservation, fetchBlockedDates } from "../utils/booking-api";
+import { localTodayISO } from "../utils/date-utils";
 import { toast } from "react-toastify";
 import { useWebSocketContext } from "../context/WebSocketContext";
 
@@ -68,7 +69,7 @@ export default function BookingConfirmationPage() {
 
   useEffect(() => {
     if (!roomTypeId) { setBlockedDates([]); return; }
-    const from = new Date().toISOString().split("T")[0];
+    const from = localTodayISO();
     const toDate = new Date();
     toDate.setFullYear(toDate.getFullYear() + 1);
     const to = toDate.toISOString().split("T")[0];
@@ -87,7 +88,7 @@ export default function BookingConfirmationPage() {
 
   // Earliest valid check-out is the day after check-in
   const minCheckOutDate = useMemo(() => {
-    if (!checkInDate) return new Date().toISOString().split("T")[0];
+    if (!checkInDate) return localTodayISO();
     const d = new Date(checkInDate + "T00:00:00");
     d.setDate(d.getDate() + 1);
     return d.toISOString().split("T")[0];
@@ -510,7 +511,7 @@ export default function BookingConfirmationPage() {
                         setCheckInDate(date);
                         if (validationError.show) clearFormError();
                       }}
-                      minDate={new Date().toISOString().split("T")[0]}
+                      minDate={localTodayISO()}
                       blockedDates={blockedDates}
                       placeholder="Select check-in"
                     />

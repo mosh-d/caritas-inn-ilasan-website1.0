@@ -4,6 +4,7 @@ import { useState, useMemo } from "react";
 import DatePicker from "../shared/DatePicker";
 import Button from "../shared/Button";
 import GalleryModal from "../shared/GalleryModal";
+import { localTodayISO } from "../../utils/date-utils";
 
 //React icons
 import { LiaShowerSolid, LiaToiletPaperSolid } from "react-icons/lia";
@@ -131,7 +132,7 @@ export default function AvailableRoomsSection() {
   const [isGalleryOpen, setIsGalleryOpen] = useState(false);
   const [currentGalleryImages, setCurrentGalleryImages] = useState([]);
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = localTodayISO();
 
   // Room type to gallery images mapping (Desktop)
   const desktopRoomGalleryImages = {

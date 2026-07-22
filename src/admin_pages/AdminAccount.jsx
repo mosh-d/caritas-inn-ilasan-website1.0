@@ -35,7 +35,7 @@ function PasswordField({ label, value, onChange, autoComplete, minLength, requir
           onClick={() => setVisible((v) => !v)}
           tabIndex={-1}
           aria-label={visible ? "Hide password" : "Show password"}
-          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[color:var(--text-color)]/40 hover:text-[color:var(--text-color)] cursor-pointer transition-colors"
+          className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-[color:var(--text-color)]/60 hover:text-[color:var(--text-color)] cursor-pointer transition-colors"
         >
           {visible ? <IoEyeOffOutline size={22} /> : <IoEyeOutline size={22} />}
         </button>
@@ -101,10 +101,10 @@ function ChangeOwnPassword({ staffRole }) {
   };
 
   return (
-    <section className="w-full max-w-2xl flex flex-col gap-4">
+    <section className="w-full flex flex-col lg:px-60 gap-4">
       <div>
         <h2 className="text-3xl font-bold text-[color:var(--black)]">Change My Password</h2>
-        <p className="text-xl text-[color:var(--text-color)]/60 mt-1">
+        <p className="text-xl text-[color:var(--text-color)]/76 mt-1">
           Update the password for your {roleLabel} login. You'll need your current password to confirm.
         </p>
       </div>
@@ -147,7 +147,7 @@ function ChangeOwnPassword({ staffRole }) {
             required
           />
         </div>
-        <p className="text-lg text-[color:var(--text-color)]/40">Minimum 8 characters.</p>
+        <p className="text-lg text-[color:var(--text-color)]/60">Minimum 8 characters.</p>
 
         <button type="submit" disabled={saving} className={`${btn.primary} self-start`}>
           {saving ? "Updating..." : "Update Password"}
@@ -194,10 +194,10 @@ function ResetReceptionistPassword() {
   };
 
   return (
-    <section className="w-full max-w-2xl flex flex-col gap-4">
+    <section className="w-full flex flex-col lg:px-60 gap-4">
       <div>
         <h2 className="text-3xl font-bold text-[color:var(--black)]">Reset Receptionist Password</h2>
-        <p className="text-xl text-[color:var(--text-color)]/60 mt-1 flex items-start gap-2">
+        <p className="text-xl text-[color:var(--text-color)]/76 mt-1 flex items-start gap-2">
           <IoShieldCheckmarkOutline size={22} className="shrink-0 mt-0.5 text-[color:var(--emphasis)]" />
           Manager-only. You don't need to know the receptionist's current password — confirming with
           your own password is enough to set a new one for them.
@@ -242,7 +242,7 @@ function ResetReceptionistPassword() {
             required
           />
         </div>
-        <p className="text-lg text-[color:var(--text-color)]/40">Minimum 8 characters.</p>
+        <p className="text-lg text-[color:var(--text-color)]/60">Minimum 8 characters.</p>
 
         <button type="submit" disabled={saving} className={`${btn.primary} self-start`}>
           {saving ? "Resetting..." : "Reset Receptionist Password"}

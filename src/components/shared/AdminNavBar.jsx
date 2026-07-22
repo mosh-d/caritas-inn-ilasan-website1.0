@@ -9,7 +9,7 @@ function AlertCountBadge({ count, active }) {
   if (!count) return null;
   return (
     <span
-      className={`ml-auto text-2xl font-bold rounded-2xl px-2 pt-1 min-w-[2rem] text-center leading-tight ${
+      className={`ml-auto text-2xl font-bold rounded-full px-3 pt-1 lg:pb-1 min-w-[2rem] text-center leading-tight ${
         active ? "bg-white text-[color:var(--emphasis)]" : "bg-red-600 text-white"
       }`}
     >
@@ -66,6 +66,9 @@ export default function AdminNavBar() {
           overflow-y-auto lets the nav scroll itself if items ever overflow. */}
       <nav className="hidden md:flex overflow-y-auto shrink-0 bg-[color:var(--accent)]/70">
         <ul className="flex flex-col px-[1.6rem] py-[3rem] gap-[0.6rem] min-w-[26rem] w-full">
+          {/* `Icon` is used below as the JSX tag <Icon .../>; ESLint's no-unused-vars doesn't
+              detect JSX-only usage of a destructured function-parameter binding. */}
+          {/* eslint-disable-next-line no-unused-vars */}
           {ADMIN_NAV_ITEMS.map(({ to, label, icon: Icon, end, showAlertBadge }) => (
             <li key={to}>
               <NavLink
