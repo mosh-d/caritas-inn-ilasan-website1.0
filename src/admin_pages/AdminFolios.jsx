@@ -316,7 +316,12 @@ export default function AdminFoliosPage() {
   // Closing is part of finalizing a stay once it's over — a still in-house
   // guest can still incur new charges, so a zero balance alone isn't enough;
   // matches the same precondition the backend's auto-close paths already use.
-  const canCloseFolio = selectedFolio && Number(selectedFolio.balance) <= 0 && Boolean(selectedFolio.reservation?.actual_check_out);
+  // A no-show is the other way a stay definitively ends without an
+  // actual_check_out (the guest never arrived at all).
+  const canCloseFolio =
+    selectedFolio &&
+    Number(selectedFolio.balance) <= 0 &&
+    (Boolean(selectedFolio.reservation?.actual_check_out) || Boolean(selectedFolio.reservation?.is_no_show));
   const hasOutstandingBalance = selectedFolio && Number(selectedFolio.balance) > 0;
   const hasCreditBalance = selectedFolio && Number(selectedFolio.balance) < 0;
   // A payment-reference search runs through the generic getFolios query, not
@@ -496,7 +501,7 @@ export default function AdminFoliosPage() {
                     !canCloseFolio
                       ? Number(selectedFolio.balance) > 0
                         ? "Settle full balance before closing folio"
-                        : "Guest must check out before the folio can be closed"
+                        : "Guest must check out (or be marked no-show) before the folio can be closed"
                       : ""
                   }
                 >

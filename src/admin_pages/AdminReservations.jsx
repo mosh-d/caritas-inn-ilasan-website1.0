@@ -57,6 +57,11 @@ export default function AdminReservationsPage() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [reservationFolio, setReservationFolio] = useState(null);
   const [editFields, setEditFields] = useState({ special_requests: "", total_rate: "", discount_mode: "percentage", discount: "" });
+  // Tracks which reservation the Discount field's value currently applies
+  // to, so a not-yet-saved discount survives closing and reopening the SAME
+  // reservation (e.g. flicking over to Folios and back) without leaking
+  // into a DIFFERENT reservation opened afterward.
+  const lastEditedReservationIdRef = useRef(null);
   const [saving, setSaving] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [isCancelOpen, setIsCancelOpen] = useState(false);
@@ -166,16 +171,44 @@ export default function AdminReservationsPage() {
         fetchDeposits({ reservation_id: reservation.id }),
       ]);
       setSelectedReservation(full);
-      setEditFields({
-        special_requests: full.special_requests || "",
-        total_rate: full.total_rate ?? "",
-        check_in: full.check_in ? new Date(full.check_in).toISOString().split("T")[0] : "",
-        // Discount is a one-shot calculator, not a persisted field — always
-        // starts blank/0% so it doesn't imply a discount is already applied.
-        discount_mode: "percentage",
-        discount: "",
+
+      const folio = (folioResult.data && folioResult.data[0]) || null;
+      // Discount is a one-shot calculator, not a persisted field — normally
+      // starts blank/0% so it doesn't imply a discount is already applied.
+      // Exception: reopening the SAME reservation (without a folio yet)
+      // keeps whatever was there, re-derived against the freshly-loaded
+      // base rate rather than the stale total_rate, so the two fields never
+      // show something inconsistent with each other.
+      setEditFields((prev) => {
+        const keepDiscount =
+          lastEditedReservationIdRef.current === full.id && !folio && Number(prev.discount || 0) > 0;
+
+        if (!keepDiscount) {
+          return {
+            special_requests: full.special_requests || "",
+            total_rate: full.total_rate ?? "",
+            check_in: full.check_in ? new Date(full.check_in).toISOString().split("T")[0] : "",
+            discount_mode: "percentage",
+            discount: "",
+          };
+        }
+
+        const nights = Math.max(1, Math.ceil((new Date(full.check_out) - new Date(full.check_in)) / (1000 * 60 * 60 * 24)));
+        const baseTotal = Number(full.room_type?.base_rate || 0) * Number(full.rooms_booked || 1) * nights;
+        const discountValue = Number(prev.discount || 0);
+        const discountAmount = prev.discount_mode === "percentage" ? baseTotal * (discountValue / 100) : discountValue;
+
+        return {
+          special_requests: full.special_requests || "",
+          total_rate: Math.max(baseTotal - discountAmount, 0),
+          check_in: full.check_in ? new Date(full.check_in).toISOString().split("T")[0] : "",
+          discount_mode: prev.discount_mode,
+          discount: prev.discount,
+        };
       });
-      setReservationFolio((folioResult.data && folioResult.data[0]) || null);
+      lastEditedReservationIdRef.current = full.id;
+
+      setReservationFolio(folio);
       setDeposits(Array.isArray(depositsResult) ? depositsResult : []);
       setPendingRoomSlots((full.room_assignments || []).map((ra) => ra.room_number));
     } catch (err) {
@@ -545,17 +578,25 @@ export default function AdminReservationsPage() {
   // number typed into the picker without clicking "Save Room Assignments",
   // would just be silently lost the moment Confirm ran. Both are now
   // required to be resolved (recorded/saved, or cleared) before Confirm is
-  // clickable at all.
+  // clickable at all. Rooms must also actually be assigned (not just have
+  // no dangling unsaved edit) — now that room numbers are the real source
+  // of truth for occupancy, a confirmed reservation with no room assigned
+  // is exactly the gap that used to let a reservation slip through to
+  // check-in with no room number at all.
   const hasUnsavedDeposit = Boolean(depositForm.amount);
   const savedRoomNumbers = (res?.room_assignments || []).map((ra) => ra.room_number);
+  const roomsBookedCount = Number(res?.rooms_booked || 1);
   const hasUnsavedRoomAssignment =
     pendingRoomSlots.length !== savedRoomNumbers.length ||
     pendingRoomSlots.some((v, i) => v !== savedRoomNumbers[i]);
+  const roomAssignmentIncomplete = savedRoomNumbers.length < roomsBookedCount;
   const confirmBlockedReason = hasUnsavedDeposit
     ? "Record the deposit (or clear the amount field) before confirming."
     : hasUnsavedRoomAssignment
       ? "Save the room assignment changes (or revert them) before confirming."
-      : null;
+      : roomAssignmentIncomplete
+        ? `Assign a room number to all ${roomsBookedCount} room(s) before confirming.`
+        : null;
 
   return (
     <>
@@ -657,16 +698,13 @@ export default function AdminReservationsPage() {
                       <td className={`${table.td} hidden md:table-cell capitalize`}>{r.source || "N/A"}</td>
                       <td className={table.td}>
                         <div className={table.actions}>
+                          {/* No row-level quick-confirm anymore — confirming
+                              now requires rooms to already be assigned (see
+                              confirmReservation's mandate), and this list has
+                              no room picker to fix that from. "View" opens
+                              the detail modal, which has both the Room
+                              Assignments picker and its own gated Confirm. */}
                           <button onClick={() => openDetail(r)} className={btn.rowPrimary}>View</button>
-                          {r.status === "hold" && (
-                            <button
-                              onClick={() => openConfirmModal(r)}
-                              disabled={confirmingId === r.id}
-                              className={btn.rowSuccess}
-                            >
-                              {confirmingId === r.id ? "Confirming..." : "Confirm"}
-                            </button>
-                          )}
                           {(r.status === "hold" || r.status === "confirmed") && (
                             <button onClick={() => openCancelModal(r)} className={btn.rowDanger}>Cancel</button>
                           )}

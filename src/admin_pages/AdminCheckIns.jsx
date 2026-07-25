@@ -201,11 +201,11 @@ export default function AdminCheckInsPage() {
       const internalId = hold.internal_id;
       const bookingRef = hold.reservation_id;
 
-      await confirmReservation(internalId);
-      // Rooms must be assigned BEFORE check-in — check-in now requires every
-      // booked room to already have a room number (see reservations.service.ts),
-      // so this has to run ahead of checkInReservation, not after it.
+      // Rooms must be assigned BEFORE confirming — confirmReservation and
+      // checkIn both now require every booked room to already have a room
+      // number (see reservations.service.ts), so this has to run first.
       await assignRoom(internalId, validRoomNumbers);
+      await confirmReservation(internalId);
       await checkInReservation(internalId);
 
       setWalkInSuccess({ bookingRef, guestName: walkIn.guestName.trim() });
