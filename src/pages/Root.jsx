@@ -2,15 +2,17 @@ import { Outlet, useLocation } from "react-router-dom";
 import { useState, useEffect, useCallback } from "react";
 import { Helmet } from "react-helmet";
 import { fetchRoomDetails } from "../utils/room-data";
+import { localTodayISO } from "../utils/date-utils";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import MainNavBar from "../components/shared/MainNavBar";
 import axios from "axios";
+import { SERVER_BASE_URL } from "../utils/server-config";
 import { generateHotelSchema } from "../utils/seoUtils";
 import SEO from "../components/seo/SEO";
 import SafeHelmet from "../components/seo/SafeHelmet";
 import SchemaMarkup from "../components/shared/SchemaMarkup";
 
-const API_BASE_URL = "https://five-clover-shared-backend.onrender.com";
+const API_BASE_URL = SERVER_BASE_URL;
 
 // Generate structured data for the hotel
 const hotelStructuredData = generateHotelSchema();
@@ -37,7 +39,7 @@ export default function RootLayout() {
 
   // Validated setter for check-in date
   const handleSetCheckInDate = (date) => {
-    const today = new Date().toISOString().split("T")[0];
+    const today = localTodayISO();
     const selected = new Date(date);
     const todayDate = new Date(today);
 

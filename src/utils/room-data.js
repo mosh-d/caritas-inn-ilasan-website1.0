@@ -1,9 +1,10 @@
 import axios from "axios";
+import { SERVER_BASE_URL } from "./server-config";
 
-const API_BASE_URL = "https://five-clover-shared-backend.onrender.com";
+const API_BASE_URL = SERVER_BASE_URL;
 const BRANCH_ID = 4;
 
-export const fetchRoomDetails = async () => {
+export const fetchRoomDetails = async (checkIn, checkOut) => {
   try {
     // Ensure API_BASE_URL doesn't end with a slash to prevent double slashes
     const baseUrl = API_BASE_URL.endsWith("/")
@@ -13,6 +14,7 @@ export const fetchRoomDetails = async () => {
       `${baseUrl}/api/rooms/details`,
       {
         branch_id: BRANCH_ID,
+        ...(checkIn && checkOut ? { check_in_date: checkIn, check_out_date: checkOut } : {}),
       },
       {
         headers: {
