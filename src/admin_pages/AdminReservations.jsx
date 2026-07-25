@@ -225,23 +225,32 @@ export default function AdminReservationsPage() {
     setConfirmError("");
   };
 
+  // Shared by handleSaveEdit and handleQuickConfirm — Confirm used to only
+  // ever send the reservation ID, never these in-progress field values, so
+  // editing Total Rate and then clicking Confirm (instead of Save Changes
+  // first) silently discarded the edit. Both actions now build the same
+  // payload so Confirm can persist a pending edit before it disappears.
+  const buildReservationUpdatePayload = () => {
+    const updatePayload = {
+      special_requests: editFields.special_requests,
+    };
+    // Total Rate is read-only once a folio exists (see the field below) —
+    // don't send it in that case, since it no longer reflects anything
+    // that's actually still editable from here.
+    if (!reservationFolio) {
+      updatePayload.total_rate = editFields.total_rate === "" ? null : Number(editFields.total_rate);
+    }
+    if (editFields.check_in && !selectedReservation?.actual_check_in) {
+      updatePayload.check_in = editFields.check_in;
+    }
+    return updatePayload;
+  };
+
   const handleSaveEdit = async () => {
     if (!selectedReservation) return;
     try {
       setSaving(true);
-      const updatePayload = {
-        special_requests: editFields.special_requests,
-      };
-      // Total Rate is read-only once a folio exists (see the field below) —
-      // don't send it in that case, since it no longer reflects anything
-      // that's actually still editable from here.
-      if (!reservationFolio) {
-        updatePayload.total_rate = editFields.total_rate === "" ? null : Number(editFields.total_rate);
-      }
-      if (editFields.check_in && !selectedReservation.actual_check_in) {
-        updatePayload.check_in = editFields.check_in;
-      }
-      await updateReservation(selectedReservation.id, updatePayload);
+      await updateReservation(selectedReservation.id, buildReservationUpdatePayload());
       setSuccessMessage("Reservation updated.");
       setTimeout(() => setSuccessMessage(""), 5000);
       closeDetail();
@@ -274,6 +283,12 @@ export default function AdminReservationsPage() {
     if (!confirmTarget) return;
     try {
       setConfirmingId(confirmTarget.id);
+      // If Confirm was opened from the currently-open detail modal, there
+      // may be an unsaved Total Rate / Special Requests edit sitting in
+      // editFields — persist it first so it's never silently lost.
+      if (selectedReservation?.id === confirmTarget.id) {
+        await updateReservation(confirmTarget.id, buildReservationUpdatePayload());
+      }
       await confirmReservation(confirmTarget.id);
       setSuccessMessage("Reservation confirmed.");
       setTimeout(() => setSuccessMessage(""), 5000);

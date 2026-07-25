@@ -25,9 +25,9 @@ import {
 const ITEM_TYPES = ["room_charge", "service", "product", "penalty", "adjustment"];
 const PAYMENT_METHODS = ["cash", "card", "transfer", "pos", "online"];
 
-// discount is always a percentage of the charge amount; tax can be either a
-// percentage of the amount or a flat figure, picked via tax_mode.
-const emptyItemForm = { description: "", amount: "", tax: "0", tax_mode: "fixed", discount: "0", item_type: "service", date: "" };
+// Both tax and discount can be either a percentage of the charge amount or
+// a flat figure, picked via tax_mode/discount_mode.
+const emptyItemForm = { description: "", amount: "", tax: "0", tax_mode: "fixed", discount: "0", discount_mode: "percentage", item_type: "service", date: "" };
 const emptyCreateForm = { reservation_id: "", guest_id: "", total_amount: "0", amount_paid: "0" };
 const emptyPaymentForm = { amount: "", payment_method: "cash", receipt_number: "", notes: "" };
 const emptyRefundForm = { amount: "", payment_method: "cash", receipt_number: "", notes: "" };
@@ -190,11 +190,13 @@ export default function AdminFoliosPage() {
     try {
       setAddingItem(true);
       const amount = Number(itemForm.amount);
-      // Discount is always entered as a % of the charge; tax is either a %
-      // of the charge or a flat figure, depending on tax_mode — both get
+      // Both tax and discount can be entered as either a % of the charge or
+      // a flat figure, depending on tax_mode/discount_mode — both get
       // converted to real currency amounts here before hitting the API,
       // which still stores/reports plain amounts (no schema change needed).
-      const discountAmount = amount * (Number(itemForm.discount || 0) / 100);
+      const discountAmount = itemForm.discount_mode === "percentage"
+        ? amount * (Number(itemForm.discount || 0) / 100)
+        : Number(itemForm.discount || 0);
       const taxAmount = itemForm.tax_mode === "percentage"
         ? amount * (Number(itemForm.tax || 0) / 100)
         : Number(itemForm.tax || 0);
@@ -311,7 +313,10 @@ export default function AdminFoliosPage() {
     }
   };
 
-  const canCloseFolio = selectedFolio && Number(selectedFolio.balance) <= 0;
+  // Closing is part of finalizing a stay once it's over — a still in-house
+  // guest can still incur new charges, so a zero balance alone isn't enough;
+  // matches the same precondition the backend's auto-close paths already use.
+  const canCloseFolio = selectedFolio && Number(selectedFolio.balance) <= 0 && Boolean(selectedFolio.reservation?.actual_check_out);
   const hasOutstandingBalance = selectedFolio && Number(selectedFolio.balance) > 0;
   const hasCreditBalance = selectedFolio && Number(selectedFolio.balance) < 0;
   // A payment-reference search runs through the generic getFolios query, not
@@ -487,7 +492,13 @@ export default function AdminFoliosPage() {
                   onClick={handleCloseFolio}
                   disabled={!canCloseFolio || closing}
                   className={btn.primary}
-                  title={!canCloseFolio ? "Settle full balance before closing folio" : ""}
+                  title={
+                    !canCloseFolio
+                      ? Number(selectedFolio.balance) > 0
+                        ? "Settle full balance before closing folio"
+                        : "Guest must check out before the folio can be closed"
+                      : ""
+                  }
                 >
                   {closing ? "Closing..." : "Close Folio"}
                 </button>
@@ -520,6 +531,14 @@ export default function AdminFoliosPage() {
               {/* Charges */}
               <section className="flex flex-col gap-3 border-t border-[color:var(--text-color)]/10 pt-6">
                 <h3 className="text-2xl font-bold text-[color:var(--black)]">Charges</h3>
+                {selectedFolio.reservation?.actual_check_in && Number(selectedFolio.reservation?.total_rate) > 0 && (
+                  <div className="bg-[color:var(--text-color)]/3 border border-[color:var(--text-color)]/10 rounded-lg px-5 py-3 text-lg text-[color:var(--text-color)]/76">
+                    Original Total Cost of Accommodation: <span className="font-bold text-[color:var(--black)]">{money(selectedFolio.reservation.total_rate)}</span>
+                    <span className="block text-base mt-1">
+                      Reference only — not part of the balance below. Room charges are billed night by night; use this if you need to compare against a later discount.
+                    </span>
+                  </div>
+                )}
                 {(!selectedFolio.items || selectedFolio.items.length === 0) ? (
                   <p className="text-xl text-[color:var(--text-color)]/76">No charges yet.</p>
                 ) : (
@@ -563,8 +582,18 @@ export default function AdminFoliosPage() {
                         </div>
                       </div>
                       <div className="flex flex-col gap-2">
-                        <label className={field.label}>Discount (%)</label>
-                        <input type="number" min="0" max="100" value={itemForm.discount} onChange={(e) => setItemForm({ ...itemForm, discount: e.target.value })} className={field.input} />
+                        <label className={field.label}>Discount ({itemForm.discount_mode === "percentage" ? "%" : "₦"})</label>
+                        <div className="flex flex-col gap-2">
+                          <select
+                            value={itemForm.discount_mode}
+                            onChange={(e) => setItemForm({ ...itemForm, discount_mode: e.target.value })}
+                            className={`${field.select} w-auto`}
+                          >
+                            <option value="fixed">Fixed (₦)</option>
+                            <option value="percentage">Percentage (%)</option>
+                          </select>
+                          <input type="number" value={itemForm.discount} onChange={(e) => setItemForm({ ...itemForm, discount: e.target.value })} className={field.input} />
+                        </div>
                       </div>
                       <div className="flex flex-col gap-2">
                         <label className={field.label}>Item Type</label>
@@ -573,6 +602,13 @@ export default function AdminFoliosPage() {
                         </select>
                       </div>
                     </div>
+                    {itemForm.item_type === "adjustment" && (
+                      <p className="text-lg text-[color:var(--text-color)]/60 -mt-1">
+                        To discount or correct an already-posted charge (e.g. a night-audit room charge), don't edit that
+                        line — post a new adjustment here with a <strong>negative amount</strong> instead
+                        (e.g. -3000.00). This keeps the original charge visible for audit.
+                      </p>
+                    )}
                     <button onClick={handleAddItem} disabled={addingItem || !itemForm.description || !itemForm.amount} className={`${btn.primary} self-start`}>
                       {addingItem ? "Adding..." : "Add Charge"}
                     </button>

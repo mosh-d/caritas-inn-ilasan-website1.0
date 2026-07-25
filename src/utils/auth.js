@@ -4,12 +4,17 @@ import { SERVER_BASE_URL } from "./server-config";
 const API_BASE_URL = SERVER_BASE_URL;
 const API_URL = `${API_BASE_URL}/api/users`; // Added /api to match backend routes
 const TOKEN_KEY = import.meta.env.VITE_TOKEN_KEY || "auth_token";
+const REFRESH_TOKEN_KEY = "auth_refresh_token";
 const USER_KEY = "admin_user";
 const BRANCH_INFO_KEY = "branch_info";
 const BRANCH_ID = 4; // Caritas Inn Ilasan branch ID
 
 const persistSession = (data) => {
   localStorage.setItem(TOKEN_KEY, data.token);
+
+  if (data.refresh_token) {
+    localStorage.setItem(REFRESH_TOKEN_KEY, data.refresh_token);
+  }
 
   if (data.branch) {
     localStorage.setItem(BRANCH_INFO_KEY, JSON.stringify(data.branch));
@@ -22,9 +27,12 @@ const persistSession = (data) => {
 
 const clearStoredSession = () => {
   localStorage.removeItem(TOKEN_KEY);
+  localStorage.removeItem(REFRESH_TOKEN_KEY);
   localStorage.removeItem(USER_KEY);
   localStorage.removeItem(BRANCH_INFO_KEY);
 };
+
+export const getStoredRefreshToken = () => localStorage.getItem(REFRESH_TOKEN_KEY);
 
 // Login and get token
 export const login = async (staffRole, password) => {
@@ -60,6 +68,38 @@ export const login = async (staffRole, password) => {
       error: error,
     });
     throw error;
+  }
+};
+
+// Silently exchanges the stored refresh token for a new access token (and a
+// rotated refresh token). Used by the global axios interceptor so an expired
+// access token doesn't have to mean an interrupted admin session — only a
+// missing/expired/already-used refresh token falls through to a real logout.
+// Returns the new access token on success, or null on failure (and clears
+// the stored session in that case, since a failed refresh means the session
+// really is over).
+export const refreshAccessToken = async () => {
+  const refreshToken = getStoredRefreshToken();
+  if (!refreshToken) return null;
+
+  try {
+    const response = await fetch(`${API_URL}/refresh`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ refresh_token: refreshToken }),
+    });
+
+    if (!response.ok) {
+      clearStoredSession();
+      return null;
+    }
+
+    const data = await response.json();
+    persistSession(data);
+    return data.token;
+  } catch (error) {
+    console.error("Silent token refresh failed:", error);
+    return null;
   }
 };
 
@@ -117,10 +157,34 @@ export const changePassword = async ({ current_password, new_password, target_ro
   return data;
 };
 
-// Logout
-export const logout = () => {
+// Logout. Best-effort revokes the refresh token server-side so it can't be
+// silently reused later — but never blocks the actual sign-out on that call
+// succeeding, since the user's own device state is cleared regardless.
+export const logout = async () => {
+  const refreshToken = getStoredRefreshToken();
+  if (refreshToken) {
+    try {
+      await fetch(`${API_URL}/logout`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ refresh_token: refreshToken }),
+      });
+    } catch (error) {
+      console.error("Logout revocation call failed (session is still cleared locally):", error);
+    }
+  }
   clearStoredSession();
   window.location.href = "/admin";
+};
+
+// Called by the global axios interceptor (see utils/axios-interceptor.js)
+// when a silent refreshAccessToken() attempt also fails — distinct from the
+// user-initiated logout() above so the login page can show a clear "your
+// session expired" message instead of silently landing back on a blank
+// login form with no explanation, which is what happened before.
+export const handleSessionExpired = () => {
+  clearStoredSession();
+  window.location.href = "/admin?sessionExpired=true";
 };
 
 // Get auth headers

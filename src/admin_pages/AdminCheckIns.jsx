@@ -30,7 +30,7 @@ const tomorrowISO = () => {
 };
 const fmtCurrency = (amount, symbol = "₦") => `${symbol}${Number(amount || 0).toLocaleString()}`;
 
-const EMPTY_WALK_IN = { checkOut: "", roomsBooked: 1, roomTypeId: "", guestName: "", phone: "", email: "", roomNumber: "" };
+const EMPTY_WALK_IN = { checkOut: "", roomsBooked: 1, roomTypeId: "", guestName: "", phone: "", email: "", roomNumbers: [], roomRate: "" };
 
 export default function AdminCheckInsPage() {
   const navigate = useNavigate();
@@ -160,6 +160,13 @@ export default function AdminCheckInsPage() {
         rooms_booked: Number(walkIn.roomsBooked),
         source: "walk_in",
         booking_channel: "direct",
+        // A walk-in goes straight from creation to Confirmed (see below) with
+        // no separate Hold-stage review step to adjust the rate afterward
+        // (unlike an online booking) — so the rate has to be sent here.
+        // walkInTotal already folds in the (possibly overridden) per-night
+        // rate × rooms booked × nights, matching how the backend would
+        // otherwise compute it from the room type's own base_rate.
+        total_rate: walkInTotal,
       });
 
       const internalId = hold.internal_id;
@@ -167,7 +174,8 @@ export default function AdminCheckInsPage() {
 
       await confirmReservation(internalId);
       await checkInReservation(internalId);
-      if (walkIn.roomNumber.trim()) await assignRoom(internalId, [walkIn.roomNumber.trim()]);
+      const validRoomNumbers = walkIn.roomNumbers.map((r) => r.trim()).filter(Boolean);
+      if (validRoomNumbers.length > 0) await assignRoom(internalId, validRoomNumbers);
 
       setWalkInSuccess({ bookingRef, guestName: walkIn.guestName.trim() });
       setWalkIn(EMPTY_WALK_IN);
@@ -189,6 +197,29 @@ export default function AdminCheckInsPage() {
   const availableTypes = availability
     ? availability.room_types.filter((rt) => rt.available_rooms >= Number(walkIn.roomsBooked))
     : [];
+
+  const selectedWalkInRoomType = availableTypes.find((rt) => String(rt.room_type_id) === walkIn.roomTypeId);
+  const walkInNights = walkIn.checkOut
+    ? Math.max(1, Math.ceil((new Date(walkIn.checkOut) - new Date(todayISO())) / (1000 * 60 * 60 * 24)))
+    : 1;
+  // The field holds a per-night rate, pre-filled with the room type's own
+  // base rate (not the total) — staff think in "rate per night", and the
+  // label alongside shows the resulting total live as they override it.
+  const walkInRoomRate = walkIn.roomRate !== "" ? Number(walkIn.roomRate) : Number(selectedWalkInRoomType?.base_rate || 0);
+  const walkInTotal = walkInRoomRate * Number(walkIn.roomsBooked || 1) * walkInNights;
+
+  // Free-text fallback only when this room type has no numbered inventory at
+  // all — same convention as RoomAssignmentPicker elsewhere in the app.
+  const hasNumberedWalkInInventory = !(walkInAvailableRooms && walkInAvailableRooms.unlabeled_rooms > 0);
+  const noWalkInRoomsFree = hasNumberedWalkInInventory && walkInAvailableRooms && walkInAvailableRooms.available.length === 0;
+
+  const updateWalkInRoomNumber = (index, value) => {
+    setWalkIn((p) => {
+      const next = [...p.roomNumbers];
+      next[index] = value;
+      return { ...p, roomNumbers: next };
+    });
+  };
 
   return (
     <>
@@ -319,7 +350,7 @@ export default function AdminCheckInsPage() {
                       min={tomorrowISO()}
                       value={walkIn.checkOut}
                       onChange={(e) => {
-                        setWalkIn((p) => ({ ...p, checkOut: e.target.value, roomTypeId: "" }));
+                        setWalkIn((p) => ({ ...p, checkOut: e.target.value, roomTypeId: "", roomNumbers: [] }));
                         setAvailability(null);
                       }}
                       className={field.input}
@@ -332,7 +363,7 @@ export default function AdminCheckInsPage() {
                       min="1"
                       value={walkIn.roomsBooked}
                       onChange={(e) => {
-                        setWalkIn((p) => ({ ...p, roomsBooked: e.target.value, roomTypeId: "" }));
+                        setWalkIn((p) => ({ ...p, roomsBooked: e.target.value, roomTypeId: "", roomNumbers: [] }));
                         setAvailability(null);
                       }}
                       className={`${field.input} w-28`}
@@ -375,7 +406,7 @@ export default function AdminCheckInsPage() {
                                 name="roomType"
                                 value={rt.room_type_id}
                                 checked={walkIn.roomTypeId === String(rt.room_type_id)}
-                                onChange={(e) => setWalkIn((p) => ({ ...p, roomTypeId: e.target.value, roomNumber: "" }))}
+                                onChange={(e) => setWalkIn((p) => ({ ...p, roomTypeId: e.target.value, roomNumbers: [], roomRate: "" }))}
                                 className="accent-[color:var(--emphasis)] w-5 h-5"
                               />
                               <span className="text-xl font-medium">{rt.room_type_name}</span>
@@ -392,6 +423,31 @@ export default function AdminCheckInsPage() {
                         ))}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* Room rate override — a walk-in goes straight to Confirmed
+                    with no separate Hold-stage review step, so this is the
+                    only chance to adjust it before the folio is created.
+                    Pre-filled with the room type's own rate (editable from
+                    there); the label alongside always shows the resulting
+                    total for the whole stay, updating live as it's overridden. */}
+                {walkIn.roomTypeId && (
+                  <div className="flex flex-col gap-2">
+                    <label className={field.label}>Room Rate (₦/night)</label>
+                    <div className="flex items-center gap-4 flex-wrap">
+                      <input
+                        type="number"
+                        value={walkIn.roomRate !== "" ? walkIn.roomRate : String(selectedWalkInRoomType?.base_rate ?? "")}
+                        onChange={(e) => setWalkIn((p) => ({ ...p, roomRate: e.target.value }))}
+                        className={`${field.input} max-w-xs`}
+                      />
+                      <span className="text-xl text-[color:var(--text-color)]/76 whitespace-nowrap">
+                        {walkInNights} night{walkInNights > 1 ? "s" : ""}
+                        {Number(walkIn.roomsBooked) > 1 ? ` × ${walkIn.roomsBooked} rooms` : ""}
+                        {" × "}{fmtCurrency(walkInRoomRate)} = <strong className="text-[color:var(--black)]">{fmtCurrency(walkInTotal)}</strong>
+                      </span>
+                    </div>
                   </div>
                 )}
 
@@ -435,33 +491,48 @@ export default function AdminCheckInsPage() {
                   </div>
                   <div className="flex flex-col gap-2">
                     <label className={field.label}>
-                      Room Number <span className="text-[color:var(--text-color)]/60 font-normal">(optional)</span>
+                      Room Number{Number(walkIn.roomsBooked) > 1 ? "s" : ""}{" "}
+                      <span className="text-[color:var(--text-color)]/60 font-normal">(optional)</span>
                     </label>
                     {!walkIn.roomTypeId ? (
                       <p className="text-lg text-[color:var(--text-color)]/60">Select a room type first.</p>
                     ) : walkInRoomsLoading ? (
                       <p className="text-lg text-[color:var(--text-color)]/68">Loading available rooms…</p>
-                    ) : walkInAvailableRooms && walkInAvailableRooms.available.length > 0 ? (
-                      <select
-                        value={walkIn.roomNumber}
-                        onChange={(e) => setWalkIn((p) => ({ ...p, roomNumber: e.target.value }))}
-                        className={`${field.select} w-44`}
-                      >
-                        <option value="">-- Select a room --</option>
-                        {walkInAvailableRooms.available.map((r) => (
-                          <option key={r.id} value={r.room_number}>{r.room_number}</option>
-                        ))}
-                      </select>
-                    ) : walkInAvailableRooms && walkInAvailableRooms.unlabeled_rooms === 0 ? (
+                    ) : noWalkInRoomsFree ? (
                       <p className="text-lg text-red-600">No rooms of this type are currently free.</p>
                     ) : (
-                      <input
-                        type="text"
-                        placeholder="e.g. 205"
-                        value={walkIn.roomNumber}
-                        onChange={(e) => setWalkIn((p) => ({ ...p, roomNumber: e.target.value }))}
-                        className={`${field.input} w-44`}
-                      />
+                      <div className="flex flex-col gap-2">
+                        {Array.from({ length: Number(walkIn.roomsBooked) || 1 }).map((_, index) => {
+                          const value = walkIn.roomNumbers[index] || "";
+                          const options = hasNumberedWalkInInventory && walkInAvailableRooms
+                            ? walkInAvailableRooms.available.filter(
+                                (r) => r.room_number === value || !walkIn.roomNumbers.includes(r.room_number),
+                              )
+                            : [];
+                          return hasNumberedWalkInInventory ? (
+                            <select
+                              key={index}
+                              value={value}
+                              onChange={(e) => updateWalkInRoomNumber(index, e.target.value)}
+                              className={`${field.select} w-44`}
+                            >
+                              <option value="">-- Select a room --</option>
+                              {options.map((r) => (
+                                <option key={r.id} value={r.room_number}>{r.room_number}</option>
+                              ))}
+                            </select>
+                          ) : (
+                            <input
+                              key={index}
+                              type="text"
+                              placeholder="e.g. 205"
+                              value={value}
+                              onChange={(e) => updateWalkInRoomNumber(index, e.target.value)}
+                              className={`${field.input} w-44`}
+                            />
+                          );
+                        })}
+                      </div>
                     )}
                   </div>
                 </div>

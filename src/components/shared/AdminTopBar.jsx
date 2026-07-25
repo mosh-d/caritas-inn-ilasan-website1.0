@@ -37,9 +37,10 @@ export default function AdminTopBar() {
         {staffRole && (
           <NavLink
             to='/admin/account'
-            className='hidden sm:flex items-center gap-2 text-lg text-white/70 hover:text-white transition-colors'
+            className='flex items-center gap-2 text-lg text-white/70 hover:text-white transition-colors'
           >
-            Signed in as <StatusBadge status={staffRole} />
+            <div className='max-sm:hidden'>Signed in as</div>
+            <StatusBadge status={staffRole} />
           </NavLink>
         )}
         <button

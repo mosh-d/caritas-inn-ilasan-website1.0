@@ -455,7 +455,7 @@ function ManifestTab() {
               Showing data for <strong className="text-[color:var(--black)]">{data.period.from}</strong> to{" "}
               <strong className="text-[color:var(--black)]">{data.period.to}</strong>
             </p>
-            <Button onClick={handleExport} disabled={exporting} variant="secondary" className="text-xl! flex items-center gap-2">
+            <Button onClick={handleExport} disabled={exporting} variant="secondary" className="text-xl! flex items-center rounded-xl gap-2">
               <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
             </Button>
           </div>
@@ -557,7 +557,7 @@ function AnalysisTab() {
       {!loading && data && (
         <div className="w-full flex flex-col gap-[2.5rem]">
           <div className="w-full flex justify-end">
-            <Button onClick={handleExport} disabled={exporting} variant="secondary" className="text-xl! flex items-center gap-2">
+            <Button onClick={handleExport} disabled={exporting} variant="secondary" className="text-xl! flex rounded-xl items-center gap-2">
               <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
             </Button>
           </div>
@@ -688,7 +688,7 @@ function PmsReportTab() {
               {data.variant === "evening" ? "Evening" : "Morning"} report for{" "}
               <strong className="text-[color:var(--black)]">{data.report_date}</strong>
             </p>
-            <Button onClick={handleExport} disabled={exporting} variant="secondary" className="text-xl! flex items-center gap-2">
+            <Button onClick={handleExport} disabled={exporting} variant="secondary" className="text-xl! flex items-center rounded-xl gap-2">
               <IoDownloadOutline size={20} /> {exporting ? "Exporting..." : "Export Excel"}
             </Button>
           </div>
