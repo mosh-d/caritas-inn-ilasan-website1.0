@@ -24,6 +24,15 @@ const pct = (v) => `${Number(v || 0).toFixed(1)}%`;
 const formatDateTime = (d) =>
   d ? new Date(d).toLocaleString("en-US", { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" }) : "—";
 
+// check_in/check_out are stored as a UTC-midnight marker for the scheduled
+// calendar date, not a real point in time — formatting them with a time
+// component renders a meaningless "1:00 AM" (UTC midnight shifted into
+// WAT). Use this for any date that hasn't actually happened yet (a
+// scheduled checkout still in the future); use formatDateTime with the
+// actual_check_in/actual_check_out timestamp once it's a real past event.
+const formatDate = (d) =>
+  d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "—";
+
 function currentMonthRange() {
   const now = new Date();
   const from = new Date(now.getFullYear(), now.getMonth(), 1);
@@ -711,8 +720,12 @@ function PmsReportTab() {
                   {data.stay_overs.map((r) => (
                     <tr key={r.id} className="border-b border-[color:var(--text-color)]/10">
                       <td className="px-6 py-4 font-medium text-[color:var(--black)]">{r.guest_name}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDateTime(r.check_in)}</td>
-                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDateTime(r.check_out)}</td>
+                      {/* A stay-over is already checked in (that's what makes them a stay-over,
+                          not an arrival) but hasn't checked out yet — actual_check_in is a real
+                          timestamp worth showing with a time; check_out is still just a scheduled
+                          calendar date until it actually happens, so it gets no fake time attached. */}
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDateTime(r.actual_check_in)}</td>
+                      <td className="px-6 py-4 text-[color:var(--text-color)]/84">{formatDate(r.check_out)}</td>
                     </tr>
                   ))}
                 </tbody>

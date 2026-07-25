@@ -7,6 +7,7 @@ import StatusBadge from "../components/shared/StatusBadge";
 import LoadingSpinner from "../components/shared/LoadingSpinner";
 import { btn, field, table } from "../components/shared/ui";
 import { fetchCheckInList } from "../utils/front-office-api";
+import { checkGuestBlacklist } from "../utils/guests-api";
 import { localTodayISO } from "../utils/date-utils";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import RoomAssignmentPicker from "../components/shared/RoomAssignmentPicker";
@@ -30,7 +31,7 @@ const tomorrowISO = () => {
 };
 const fmtCurrency = (amount, symbol = "₦") => `${symbol}${Number(amount || 0).toLocaleString()}`;
 
-const EMPTY_WALK_IN = { checkOut: "", roomsBooked: 1, roomTypeId: "", guestName: "", phone: "", email: "", roomNumbers: [], roomRate: "" };
+const EMPTY_WALK_IN = { checkOut: "", roomsBooked: 1, roomTypeId: "", guestName: "", phone: "", email: "", roomNumbers: [], roomRate: "", discountMode: "percentage", discount: "" };
 
 export default function AdminCheckInsPage() {
   const navigate = useNavigate();
@@ -55,6 +56,7 @@ export default function AdminCheckInsPage() {
   const [walkInError, setWalkInError] = useState(null);
   const [walkInAvailableRooms, setWalkInAvailableRooms] = useState(null);
   const [walkInRoomsLoading, setWalkInRoomsLoading] = useState(false);
+  const [walkInBlacklisted, setWalkInBlacklisted] = useState(false);
 
   const loadList = useCallback(async () => {
     try {
@@ -105,11 +107,33 @@ export default function AdminCheckInsPage() {
     return () => { cancelled = true; };
   }, [walkIn.roomTypeId, walkIn.checkOut]);
 
+  // Live blacklist check as the receptionist types the email — there's no
+  // reservation (or guest_id link) yet at this point, so this has to match
+  // by email directly rather than relying on the usual guest association.
+  // Debounced so it's not firing on every keystroke.
+  useEffect(() => {
+    const email = walkIn.email.trim();
+    if (!email.includes("@")) {
+      setWalkInBlacklisted(false);
+      return;
+    }
+    let cancelled = false;
+    const timer = setTimeout(() => {
+      checkGuestBlacklist(email)
+        .then((data) => { if (!cancelled) setWalkInBlacklisted(Boolean(data?.is_blacklisted)); })
+        .catch(() => { if (!cancelled) setWalkInBlacklisted(false); });
+    }, 400);
+    return () => { cancelled = true; clearTimeout(timer); };
+  }, [walkIn.email]);
+
   const handleCheckIn = async () => {
     if (!selected) return;
     try {
       setProcessing(true);
-      if (roomNumbers.length > 0) await assignRoom(selected.id, roomNumbers);
+      // The Confirm Check In button is disabled until every booked room has
+      // a number assigned (see roomNumbers.length check on the footer
+      // button above), so this is always non-empty by the time we get here.
+      await assignRoom(selected.id, roomNumbers);
       const checkedInId = selected.id;
       await checkInReservation(checkedInId);
       setSelected(null);
@@ -146,6 +170,11 @@ export default function AdminCheckInsPage() {
       setWalkInError("Guest name, phone, email, room type, and check-out date are required.");
       return;
     }
+    const validRoomNumbers = walkIn.roomNumbers.map((r) => r.trim()).filter(Boolean);
+    if (validRoomNumbers.length < Number(walkIn.roomsBooked || 1)) {
+      setWalkInError("Assign a room number to every room before checking in.");
+      return;
+    }
     setWalkInProcessing(true);
     setWalkInError(null);
     try {
@@ -173,9 +202,11 @@ export default function AdminCheckInsPage() {
       const bookingRef = hold.reservation_id;
 
       await confirmReservation(internalId);
+      // Rooms must be assigned BEFORE check-in — check-in now requires every
+      // booked room to already have a room number (see reservations.service.ts),
+      // so this has to run ahead of checkInReservation, not after it.
+      await assignRoom(internalId, validRoomNumbers);
       await checkInReservation(internalId);
-      const validRoomNumbers = walkIn.roomNumbers.map((r) => r.trim()).filter(Boolean);
-      if (validRoomNumbers.length > 0) await assignRoom(internalId, validRoomNumbers);
 
       setWalkInSuccess({ bookingRef, guestName: walkIn.guestName.trim() });
       setWalkIn(EMPTY_WALK_IN);
@@ -207,6 +238,21 @@ export default function AdminCheckInsPage() {
   // label alongside shows the resulting total live as they override it.
   const walkInRoomRate = walkIn.roomRate !== "" ? Number(walkIn.roomRate) : Number(selectedWalkInRoomType?.base_rate || 0);
   const walkInTotal = walkInRoomRate * Number(walkIn.roomsBooked || 1) * walkInNights;
+  const walkInValidRoomNumbers = walkIn.roomNumbers.map((r) => r.trim()).filter(Boolean);
+  const walkInBaseRate = Number(selectedWalkInRoomType?.base_rate || 0);
+
+  // Discount is a one-shot calculator, not a persisted field — touching it
+  // recomputes the per-night Room Rate from the room type's own base rate
+  // every time, same pattern as the Hold reservation modal's discount field.
+  const handleWalkInDiscountChange = (patch) => {
+    setWalkIn((p) => {
+      const next = { ...p, ...patch };
+      const value = Number(next.discount || 0);
+      const discountAmount = next.discountMode === "percentage" ? walkInBaseRate * (value / 100) : value;
+      next.roomRate = String(Math.max(walkInBaseRate - discountAmount, 0));
+      return next;
+    });
+  };
 
   // Free-text fallback only when this room type has no numbered inventory at
   // all — same convention as RoomAssignmentPicker elsewhere in the app.
@@ -406,7 +452,7 @@ export default function AdminCheckInsPage() {
                                 name="roomType"
                                 value={rt.room_type_id}
                                 checked={walkIn.roomTypeId === String(rt.room_type_id)}
-                                onChange={(e) => setWalkIn((p) => ({ ...p, roomTypeId: e.target.value, roomNumbers: [], roomRate: "" }))}
+                                onChange={(e) => setWalkIn((p) => ({ ...p, roomTypeId: e.target.value, roomNumbers: [], roomRate: "", discount: "" }))}
                                 className="accent-[color:var(--emphasis)] w-5 h-5"
                               />
                               <span className="text-xl font-medium">{rt.room_type_name}</span>
@@ -451,6 +497,32 @@ export default function AdminCheckInsPage() {
                   </div>
                 )}
 
+                {/* Discount — applies against the room type's own base rate
+                    (not whatever's currently typed in Room Rate above), and
+                    writes the result straight into Room Rate so the total
+                    updates live the same way overriding it directly would. */}
+                {walkIn.roomTypeId && (
+                  <div className="flex flex-col gap-2">
+                    <label className={field.label}>Discount ({walkIn.discountMode === "percentage" ? "%" : "₦/night"})</label>
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <select
+                        value={walkIn.discountMode}
+                        onChange={(e) => handleWalkInDiscountChange({ discountMode: e.target.value })}
+                        className={`${field.select} w-auto`}
+                      >
+                        <option value="fixed">Fixed (₦/night)</option>
+                        <option value="percentage">Percentage (%)</option>
+                      </select>
+                      <input
+                        type="number"
+                        value={walkIn.discount}
+                        onChange={(e) => handleWalkInDiscountChange({ discount: e.target.value })}
+                        className={`${field.input} max-w-xs`}
+                      />
+                    </div>
+                  </div>
+                )}
+
                 {/* Guest details */}
                 <div className="flex flex-col gap-6">
                   <div className="flex flex-col gap-2">
@@ -479,7 +551,12 @@ export default function AdminCheckInsPage() {
                       />
                     </div>
                     <div className="flex flex-col gap-2 flex-1 min-w-48">
-                      <label className={field.label}>Email</label>
+                      <label className={field.label}>
+                        Email
+                        {walkInBlacklisted && (
+                          <span className="ml-3 text-sm font-bold uppercase tracking-wide text-red-700 bg-red-100 px-2 py-1 rounded-full whitespace-nowrap">Blacklisted</span>
+                        )}
+                      </label>
                       <input
                         type="email"
                         placeholder="guest@example.com"
@@ -491,8 +568,7 @@ export default function AdminCheckInsPage() {
                   </div>
                   <div className="flex flex-col gap-2">
                     <label className={field.label}>
-                      Room Number{Number(walkIn.roomsBooked) > 1 ? "s" : ""}{" "}
-                      <span className="text-[color:var(--text-color)]/60 font-normal">(optional)</span>
+                      Room Number{Number(walkIn.roomsBooked) > 1 ? "s" : ""}
                     </label>
                     {!walkIn.roomTypeId ? (
                       <p className="text-lg text-[color:var(--text-color)]/60">Select a room type first.</p>
@@ -532,6 +608,11 @@ export default function AdminCheckInsPage() {
                             />
                           );
                         })}
+                        {walkInValidRoomNumbers.length < Number(walkIn.roomsBooked || 1) && (
+                          <p className="text-lg text-orange-600">
+                            {walkInValidRoomNumbers.length} of {walkIn.roomsBooked} room(s) assigned — a room number is required for every room before check-in.
+                          </p>
+                        )}
                       </div>
                     )}
                   </div>
@@ -539,7 +620,13 @@ export default function AdminCheckInsPage() {
 
                 <button
                   type="submit"
-                  disabled={walkInProcessing || !walkIn.roomTypeId || !walkIn.guestName.trim() || !walkIn.phone.trim()}
+                  disabled={
+                    walkInProcessing ||
+                    !walkIn.roomTypeId ||
+                    !walkIn.guestName.trim() ||
+                    !walkIn.phone.trim() ||
+                    walkInValidRoomNumbers.length < Number(walkIn.roomsBooked || 1)
+                  }
                   className={`${btn.primary} self-start px-12! py-4!`}
                 >
                   {walkInProcessing ? "Processing..." : "Check In Guest"}
@@ -560,7 +647,12 @@ export default function AdminCheckInsPage() {
           footer={
             <>
               <button onClick={() => setSelected(null)} className={btn.secondary}>Cancel</button>
-              <button onClick={handleCheckIn} disabled={processing} className={btn.success}>
+              <button
+                onClick={handleCheckIn}
+                disabled={processing || roomNumbers.length < (selected.rooms_booked || 1)}
+                className={btn.success}
+                title={roomNumbers.length < (selected.rooms_booked || 1) ? "Assign a room number to every room before checking in" : undefined}
+              >
                 {processing ? "Checking In..." : "Confirm Check In"}
               </button>
             </>
@@ -577,7 +669,7 @@ export default function AdminCheckInsPage() {
             </div>
           </div>
           <div className="flex flex-col gap-2">
-            <label className={field.label}>Room{selected.rooms_booked > 1 ? "s" : ""} (optional)</label>
+            <label className={field.label}>Room{selected.rooms_booked > 1 ? "s" : ""}</label>
             <RoomAssignmentPicker
               reservationId={selected.id}
               roomsBooked={selected.rooms_booked}
@@ -585,6 +677,11 @@ export default function AdminCheckInsPage() {
               onSlotsChange={setRoomNumbers}
               hideSaveButton
             />
+            {roomNumbers.length < (selected.rooms_booked || 1) && (
+              <p className="text-lg text-orange-600">
+                {roomNumbers.length} of {selected.rooms_booked} room(s) assigned — a room number is required for every room before check-in.
+              </p>
+            )}
           </div>
         </Modal>
       )}

@@ -56,7 +56,7 @@ export default function AdminReservationsPage() {
   const [selectedReservation, setSelectedReservation] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [reservationFolio, setReservationFolio] = useState(null);
-  const [editFields, setEditFields] = useState({ special_requests: "", total_rate: "" });
+  const [editFields, setEditFields] = useState({ special_requests: "", total_rate: "", discount_mode: "percentage", discount: "" });
   const [saving, setSaving] = useState(false);
   const [cancelReason, setCancelReason] = useState("");
   const [isCancelOpen, setIsCancelOpen] = useState(false);
@@ -71,6 +71,10 @@ export default function AdminReservationsPage() {
   const [assigningRoom, setAssigningRoom] = useState(false);
   const [newCheckOutDate, setNewCheckOutDate] = useState("");
   const [extending, setExtending] = useState(false);
+  // Live-tracks the Room Assignments picker's current (possibly-unsaved)
+  // slots — reported up via onSlotsChange so Confirm can tell whether
+  // "Save Room Assignments" still needs to be clicked first.
+  const [pendingRoomSlots, setPendingRoomSlots] = useState([]);
 
   const EMPTY_DEPOSIT_FORM = { amount: "", payment_method: "cash", receipt_number: "", notes: "" };
   const [deposits, setDeposits] = useState([]);
@@ -166,9 +170,14 @@ export default function AdminReservationsPage() {
         special_requests: full.special_requests || "",
         total_rate: full.total_rate ?? "",
         check_in: full.check_in ? new Date(full.check_in).toISOString().split("T")[0] : "",
+        // Discount is a one-shot calculator, not a persisted field — always
+        // starts blank/0% so it doesn't imply a discount is already applied.
+        discount_mode: "percentage",
+        discount: "",
       });
       setReservationFolio((folioResult.data && folioResult.data[0]) || null);
       setDeposits(Array.isArray(depositsResult) ? depositsResult : []);
+      setPendingRoomSlots((full.room_assignments || []).map((ra) => ra.room_number));
     } catch (err) {
       setError((err.response?.data?.message || "Failed to load reservation.") + " Please refresh the page.");
     } finally {
@@ -199,6 +208,7 @@ export default function AdminReservationsPage() {
     setModalError("");
     setShowEarlyCheckoutConfirm(false);
     setEarlyCheckoutError("");
+    setPendingRoomSlots([]);
   };
 
   const openCancelModal = (reservation) => {
@@ -508,6 +518,45 @@ export default function AdminReservationsPage() {
     .filter((d) => d.status !== "refunded")
     .reduce((sum, d) => sum + Number(d.amount || 0), 0);
 
+  // Base total the Discount field below is calculated against — the same
+  // base_rate × rooms × nights formula the backend falls back to when no
+  // override is set. Only relevant pre-folio, same as Total Rate itself.
+  const discountNights = res
+    ? Math.max(1, Math.ceil((new Date(res.check_out) - new Date(editFields.check_in || res.check_in)) / (1000 * 60 * 60 * 24)))
+    : 1;
+  const discountBaseTotal = res
+    ? Number(res.room_type?.base_rate || 0) * Number(res.rooms_booked || 1) * discountNights
+    : 0;
+
+  // Discount is a one-shot calculator, not a persisted field — touching it
+  // recomputes Total Rate from the base total every time, so it always
+  // reflects "base minus this discount" rather than compounding on top of
+  // whatever was already typed there.
+  const handleDiscountChange = (patch) => {
+    const nextFields = { ...editFields, ...patch };
+    const value = Number(nextFields.discount || 0);
+    const discountAmount = nextFields.discount_mode === "percentage" ? discountBaseTotal * (value / 100) : value;
+    nextFields.total_rate = Math.max(discountBaseTotal - discountAmount, 0);
+    setEditFields(nextFields);
+  };
+
+  // Confirm used to only ever send the reservation ID — an amount typed
+  // into the deposit form without clicking "Record Deposit", or a room
+  // number typed into the picker without clicking "Save Room Assignments",
+  // would just be silently lost the moment Confirm ran. Both are now
+  // required to be resolved (recorded/saved, or cleared) before Confirm is
+  // clickable at all.
+  const hasUnsavedDeposit = Boolean(depositForm.amount);
+  const savedRoomNumbers = (res?.room_assignments || []).map((ra) => ra.room_number);
+  const hasUnsavedRoomAssignment =
+    pendingRoomSlots.length !== savedRoomNumbers.length ||
+    pendingRoomSlots.some((v, i) => v !== savedRoomNumbers[i]);
+  const confirmBlockedReason = hasUnsavedDeposit
+    ? "Record the deposit (or clear the amount field) before confirming."
+    : hasUnsavedRoomAssignment
+      ? "Save the room assignment changes (or revert them) before confirming."
+      : null;
+
   return (
     <>
       {successMessage && (
@@ -662,7 +711,12 @@ export default function AdminReservationsPage() {
             <>
               <button onClick={closeDetail} className={btn.secondary}>Close</button>
               {res.status === "hold" && (
-                <button onClick={() => openConfirmModal(res)} disabled={confirmingId === res.id} className={btn.success}>
+                <button
+                  onClick={() => openConfirmModal(res)}
+                  disabled={confirmingId === res.id || Boolean(confirmBlockedReason)}
+                  title={confirmBlockedReason || undefined}
+                  className={btn.success}
+                >
                   {confirmingId === res.id ? "Confirming..." : "Confirm"}
                 </button>
               )}
@@ -740,7 +794,14 @@ export default function AdminReservationsPage() {
                         {money(editFields.total_rate)}
                       </div>
                     ) : (
-                      <input type="number" value={editFields.total_rate} onChange={(e) => setEditFields({ ...editFields, total_rate: e.target.value })} className={field.input} />
+                      <>
+                        <input type="number" value={editFields.total_rate} onChange={(e) => setEditFields({ ...editFields, total_rate: e.target.value })} className={field.input} />
+                        {Number(editFields.discount || 0) > 0 && (
+                          <p className="text-base text-[color:var(--text-color)]/60">
+                            Base {money(discountBaseTotal)} − {editFields.discount_mode === "percentage" ? `${editFields.discount}%` : money(editFields.discount)} discount
+                          </p>
+                        )}
+                      </>
                     )}
                   </div>
                   <div className="flex flex-col gap-2">
@@ -749,6 +810,27 @@ export default function AdminReservationsPage() {
                       {money(depositsTotal)}
                     </div>
                   </div>
+                  {!reservationFolio && (
+                    <div className="flex flex-col gap-2">
+                      <label className={field.label}>Discount ({editFields.discount_mode === "percentage" ? "%" : "₦"})</label>
+                      <div className="flex flex-col gap-2">
+                        <select
+                          value={editFields.discount_mode}
+                          onChange={(e) => handleDiscountChange({ discount_mode: e.target.value })}
+                          className={`${field.select} w-auto`}
+                        >
+                          <option value="fixed">Fixed (₦)</option>
+                          <option value="percentage">Percentage (%)</option>
+                        </select>
+                        <input
+                          type="number"
+                          value={editFields.discount}
+                          onChange={(e) => handleDiscountChange({ discount: e.target.value })}
+                          className={field.input}
+                        />
+                      </div>
+                    </div>
+                  )}
                   {!res.actual_check_in && (
                     <div className="flex flex-col gap-2">
                       <label className={field.label}>Check-In Date</label>
@@ -868,6 +950,7 @@ export default function AdminReservationsPage() {
                     initialRoomNumbers={(res.room_assignments || []).map((ra) => ra.room_number)}
                     onSave={handleAssignRoom}
                     saving={assigningRoom}
+                    onSlotsChange={setPendingRoomSlots}
                   />
                 </section>
               )}
