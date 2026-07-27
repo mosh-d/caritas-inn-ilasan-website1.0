@@ -1,5 +1,5 @@
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 import { IoClose, IoHomeOutline } from "react-icons/io5";
 import Modal from "../components/shared/Modal";
 import PageHeading from "../components/shared/PageHeading";
@@ -29,6 +29,7 @@ const money = (value) => `₦${Number(value || 0).toLocaleString(undefined, { mi
 const isOverdue = (checkOut) => checkOut && hasPassedNoonCutoff(checkOut);
 
 export default function AdminInHousePage() {
+  const navigate = useNavigate();
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
@@ -340,6 +341,14 @@ export default function AdminInHousePage() {
           footer={selected && (
             <>
               <button onClick={closeDetail} className={btn.secondary}>Close</button>
+              <button
+                onClick={() => navigate(`/admin/folios?reservation_id=${selected.id}`)}
+                disabled={!folio}
+                className={btn.secondary}
+                title={!folio ? "No folio linked to this reservation yet" : undefined}
+              >
+                Go to Folio
+              </button>
               <button onClick={handleCheckOut} disabled={processing} className={btn.success}>
                 {processing ? "Processing..." : "Check Out"}
               </button>
@@ -445,10 +454,18 @@ export default function AdminInHousePage() {
                     onChange={(e) => setNewCheckOutDate(e.target.value)}
                     className={field.input}
                   />
-                  <button onClick={handleExtendStay} disabled={processing || !newCheckOutDate} className={`${btn.primary} whitespace-nowrap`}>
+                  <button
+                    onClick={handleExtendStay}
+                    disabled={processing || !newCheckOutDate || balanceDue}
+                    className={`${btn.primary} whitespace-nowrap`}
+                    title={balanceDue ? "Settle the outstanding balance before extending the stay" : undefined}
+                  >
                     Extend
                   </button>
                 </div>
+                {balanceDue && (
+                  <p className="text-lg text-orange-600">Settle the outstanding balance before extending this stay.</p>
+                )}
               </section>
             </>
           )}

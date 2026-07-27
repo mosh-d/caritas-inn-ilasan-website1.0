@@ -325,10 +325,16 @@ export default function AdminFoliosPage() {
   const hasOutstandingBalance = selectedFolio && Number(selectedFolio.balance) > 0;
   const hasCreditBalance = selectedFolio && Number(selectedFolio.balance) < 0;
   // A payment-reference search runs through the generic getFolios query, not
-  // getOverdueFolios — it doesn't fetch actual_check_out/status, so the
-  // Guest Status column (which needs that data) only makes sense when the
-  // Overdue tab's own query actually ran, not when a search overrides it.
-  const showOverdueColumn = subTab === "overdue" && !searchTerm;
+  // getOverdueFolios/getPendingFolios — it doesn't fetch actual_check_out, so
+  // these columns (which need that data) only make sense when one of those
+  // tabs' own query actually ran, not when a search overrides it. Guest
+  // Status is useful on both Outstanding Balance and Overdue (has this
+  // guest actually left yet?); Check-Out Date only makes sense on Overdue,
+  // where it explains *why* a folio counts as overdue in the first place.
+  const showGuestStatusColumn = (subTab === "overdue" || subTab === "pending") && !searchTerm;
+  const showCheckOutDateColumn = subTab === "overdue" && !searchTerm;
+  const extraColumnCount = (showGuestStatusColumn ? 1 : 0) + (showCheckOutDateColumn ? 1 : 0);
+  const folioTableColSpan = 7 + extraColumnCount;
 
   return (
     <>
@@ -417,7 +423,8 @@ export default function AdminFoliosPage() {
                 <tr className={table.headRow}>
                   <th className={table.th}>Folio #</th>
                   <th className={`${table.th} hidden md:table-cell`}>Guest</th>
-                  {showOverdueColumn && <th className={table.th}>Guest Status</th>}
+                  {showGuestStatusColumn && <th className={table.th}>Guest Status</th>}
+                  {showCheckOutDateColumn && <th className={`${table.th} hidden md:table-cell`}>Check-Out Date</th>}
                   <th className={table.th}>Total</th>
                   <th className={table.th}>Paid</th>
                   <th className={table.th}>Balance</th>
@@ -427,11 +434,11 @@ export default function AdminFoliosPage() {
               </thead>
               <tbody>
                 {loading ? (
-                  <tr><td colSpan={showOverdueColumn ? 8 : 7} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
+                  <tr><td colSpan={folioTableColSpan} className="px-8 py-10 text-center text-xl"><LoadingSpinner /></td></tr>
                 ) : error ? (
-                  <tr><td colSpan={showOverdueColumn ? 8 : 7} className="px-8 py-10 text-center text-red-600 text-xl">{error}</td></tr>
+                  <tr><td colSpan={folioTableColSpan} className="px-8 py-10 text-center text-red-600 text-xl">{error}</td></tr>
                 ) : folios.length === 0 ? (
-                  <tr><td colSpan={showOverdueColumn ? 8 : 7} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">{searchTerm ? "No folios match that payment reference." : "No folios match filter."}</td></tr>
+                  <tr><td colSpan={folioTableColSpan} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">{searchTerm ? "No folios match that payment reference." : "No folios match filter."}</td></tr>
                 ) : (
                   folios.map((f) => (
                     <tr key={f.id} className={table.row}>
@@ -439,7 +446,7 @@ export default function AdminFoliosPage() {
                       <td className={`${table.td} hidden md:table-cell`}>
                         {f.guest ? `${f.guest.first_name} ${f.guest.last_name}` : "N/A"}
                       </td>
-                      {showOverdueColumn && (
+                      {showGuestStatusColumn && (
                         <td className={table.td}>
                           {f.reservation?.actual_check_out ? (
                             <span className="text-sm font-bold uppercase tracking-wide text-[color:var(--text-color)]/60 bg-black/5 px-2.5 py-1 rounded-full whitespace-nowrap">
@@ -451,6 +458,9 @@ export default function AdminFoliosPage() {
                             </span>
                           )}
                         </td>
+                      )}
+                      {showCheckOutDateColumn && (
+                        <td className={`${table.td} hidden md:table-cell`}>{formatDate(f.reservation?.check_out)}</td>
                       )}
                       <td className={table.td}>{money(f.total_amount)}</td>
                       <td className={table.td}>{money(f.amount_paid)}</td>

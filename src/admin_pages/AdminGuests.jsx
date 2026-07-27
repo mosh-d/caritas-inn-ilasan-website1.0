@@ -18,6 +18,7 @@ import {
 import { useWebSocketContext } from '../context/WebSocketContext';
 
 const GUEST_TYPES = ['walk-in', 'corporate', 'group', 'VIP'];
+const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
 const emptyGuestForm = {
   first_name: '',
@@ -357,11 +358,16 @@ export default function AdminGuestsPage() {
                       className={table.row}
                     >
                       <td className={`${table.td} font-medium`}>
-                        <div className='flex items-center gap-3'>
+                        <div className='flex items-center gap-3 flex-wrap'>
                           {g.first_name} {g.last_name}
                           {g.is_blacklisted && (
                             <span className='text-sm font-bold uppercase tracking-wide text-red-700 bg-red-100 px-2 py-1 rounded-full whitespace-nowrap'>
                               Blacklisted
+                            </span>
+                          )}
+                          {Number(g.outstanding_balance) > 0 && (
+                            <span className='text-sm font-bold uppercase tracking-wide text-orange-700 bg-orange-100 px-2 py-1 rounded-full whitespace-nowrap'>
+                              Owing {money(g.outstanding_balance)}
                             </span>
                           )}
                         </div>

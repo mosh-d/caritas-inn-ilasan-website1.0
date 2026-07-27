@@ -85,7 +85,7 @@ function AddRoomModal({ onClose, onSuccess, onError }) {
 
     try {
       const res = await axios.post(`${getBaseUrl()}/api/rooms/type`, payload, {
-        headers: { "Content-Type": "application/json" },
+        headers: getAuthHeaders(),
         withCredentials: true,
       });
       console.log("AdminRooms: Add room response:", res.data);
@@ -421,7 +421,7 @@ function ViewRoomModal({
         `${getBaseUrl()}/api/rooms/capacity`,
         { room_type_id: room.room_type_id, new_capacity: newCapacity },
         {
-          headers: { "Content-Type": "application/json" },
+          headers: getAuthHeaders(),
           withCredentials: true,
         }
       );
@@ -520,7 +520,7 @@ function ViewRoomModal({
     try {
       const res = await axios.delete(
         `${getBaseUrl()}/api/rooms/type/${room.room_type_id}`,
-        { withCredentials: true }
+        { headers: getAuthHeaders(), withCredentials: true }
       );
       console.log("AdminRooms: Delete room response:", res.data);
       onRoomDeleted(
@@ -1248,7 +1248,7 @@ export default function AdminRoomsPage() {
                                   [room.room_type_id]: e.target.value,
                                 }))
                               }
-                              className={`${field.input} text-xl! w-[14rem] py-2!`}
+                              className={`${field.input} text-xl! w-52! py-2!`}
                               min="0"
                               disabled={webSocketUpdating}
                             />

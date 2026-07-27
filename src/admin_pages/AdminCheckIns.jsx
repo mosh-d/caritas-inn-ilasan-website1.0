@@ -647,6 +647,9 @@ export default function AdminCheckInsPage() {
           footer={
             <>
               <button onClick={() => setSelected(null)} className={btn.secondary}>Cancel</button>
+              <button onClick={() => navigate(`/admin/folios?reservation_id=${selected.id}`)} className={btn.secondary}>
+                Go to Folio
+              </button>
               <button
                 onClick={handleCheckIn}
                 disabled={processing || roomNumbers.length < (selected.rooms_booked || 1)}

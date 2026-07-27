@@ -17,6 +17,7 @@ import {
 } from "react-icons/io5";
 import axios from "axios";
 import { SERVER_BASE_URL } from "../utils/server-config";
+import { getAuthHeaders } from "../utils/auth";
 
 import Button from "../components/shared/Button";
 import PageHeading from "../components/shared/PageHeading";
@@ -236,7 +237,7 @@ export default function AdminOverviewPage() {
       const response = await axios.post(
         `${baseUrl}/api/rooms/manual-update`,
         { room_type_id: roomTypeId, new_room_count: newCount, check_in: invCheckIn, check_out: invCheckOut },
-        { headers: { "Content-Type": "application/json" } }
+        { headers: getAuthHeaders() }
       );
 
       setRoomDetails(prev => ({ ...prev, totalAvailableRooms: response.data.new_available || newCount }));

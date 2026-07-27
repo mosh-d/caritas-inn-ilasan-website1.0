@@ -281,26 +281,28 @@ function DashboardTab() {
               {revenueByRoomType.length === 0 ? (
                 <p className="text-2xl text-[color:var(--text-color)]/68 px-6 py-8">No data for this period.</p>
               ) : (
-                <table className="w-full text-2xl">
-                  <thead>
-                    <tr className="border-b border-[color:var(--text-color)]/10">
-                      <th className="px-6 py-3 text-left text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Room Type</th>
-                      <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Stays</th>
-                      <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Revenue</th>
-                      <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Avg / Stay</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {revenueByRoomType.map((row, i) => (
-                      <tr key={i} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
-                        <td className="px-6 py-4 font-medium text-[color:var(--black)]">{row.room_type_name}</td>
-                        <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{row.total_stays}</td>
-                        <td className="px-6 py-4 text-right font-semibold text-[color:var(--black)]">{money(row.total_revenue)}</td>
-                        <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(row.avg_rate_per_stay)}</td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-2xl">
+                    <thead>
+                      <tr className="border-b border-[color:var(--text-color)]/10">
+                        <th className="px-6 py-3 text-left text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Room Type</th>
+                        <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Stays</th>
+                        <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Revenue</th>
+                        <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Avg / Stay</th>
                       </tr>
-                    ))}
-                  </tbody>
-                </table>
+                    </thead>
+                    <tbody>
+                      {revenueByRoomType.map((row, i) => (
+                        <tr key={i} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
+                          <td className="px-6 py-4 font-medium text-[color:var(--black)]">{row.room_type_name}</td>
+                          <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{row.total_stays}</td>
+                          <td className="px-6 py-4 text-right font-semibold text-[color:var(--black)]">{money(row.total_revenue)}</td>
+                          <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{money(row.avg_rate_per_stay)}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
               )}
             </div>
 
@@ -313,38 +315,40 @@ function DashboardTab() {
               {paymentMethods.length === 0 ? (
                 <p className="text-2xl text-[color:var(--text-color)]/68 px-6 py-8">No payments recorded in this period.</p>
               ) : (
-                <table className="w-full text-2xl">
-                  <thead>
-                    <tr className="border-b border-[color:var(--text-color)]/10">
-                      <th className="px-6 py-3 text-left text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Method</th>
-                      <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Count</th>
-                      <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Total</th>
-                      <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Share</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {paymentMethods.map((row, i) => (
-                      <tr key={i} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
-                        <td className="px-6 py-4 font-medium text-[color:var(--black)] capitalize">{row.payment_method}</td>
-                        <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{row.count}</td>
-                        <td className="px-6 py-4 text-right font-semibold text-[color:var(--black)]">{money(row.total)}</td>
-                        <td className="px-6 py-4 text-right text-[color:var(--text-color)]/76">
-                          {totalPaymentsCollected > 0 ? pct((row.total / totalPaymentsCollected) * 100) : "—"}
-                        </td>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-2xl">
+                    <thead>
+                      <tr className="border-b border-[color:var(--text-color)]/10">
+                        <th className="px-6 py-3 text-left text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Method</th>
+                        <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Count</th>
+                        <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Total</th>
+                        <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Share</th>
                       </tr>
-                    ))}
-                  </tbody>
-                  <tfoot className="border-t border-[color:var(--text-color)]/15">
-                    <tr className="bg-[color:var(--text-color)]/3">
-                      <td className="px-6 py-4 font-bold text-[color:var(--black)]">Total</td>
-                      <td className="px-6 py-4 text-right font-semibold text-[color:var(--text-color)]/84">
-                        {paymentMethods.reduce((s, r) => s + r.count, 0)}
-                      </td>
-                      <td className="px-6 py-4 text-right font-bold text-[color:var(--black)]">{money(totalPaymentsCollected)}</td>
-                      <td className="px-6 py-4 text-right text-[color:var(--text-color)]/68">100%</td>
-                    </tr>
-                  </tfoot>
-                </table>
+                    </thead>
+                    <tbody>
+                      {paymentMethods.map((row, i) => (
+                        <tr key={i} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
+                          <td className="px-6 py-4 font-medium text-[color:var(--black)] capitalize">{row.payment_method}</td>
+                          <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{row.count}</td>
+                          <td className="px-6 py-4 text-right font-semibold text-[color:var(--black)]">{money(row.total)}</td>
+                          <td className="px-6 py-4 text-right text-[color:var(--text-color)]/76">
+                            {totalPaymentsCollected > 0 ? pct((row.total / totalPaymentsCollected) * 100) : "—"}
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                    <tfoot className="border-t border-[color:var(--text-color)]/15">
+                      <tr className="bg-[color:var(--text-color)]/3">
+                        <td className="px-6 py-4 font-bold text-[color:var(--black)]">Total</td>
+                        <td className="px-6 py-4 text-right font-semibold text-[color:var(--text-color)]/84">
+                          {paymentMethods.reduce((s, r) => s + r.count, 0)}
+                        </td>
+                        <td className="px-6 py-4 text-right font-bold text-[color:var(--black)]">{money(totalPaymentsCollected)}</td>
+                        <td className="px-6 py-4 text-right text-[color:var(--text-color)]/68">100%</td>
+                      </tr>
+                    </tfoot>
+                  </table>
+                </div>
               )}
             </div>
           </div>
@@ -358,30 +362,32 @@ function DashboardTab() {
             {occupancy.length === 0 ? (
               <p className="text-2xl text-[color:var(--text-color)]/68 px-6 py-8">No data for this period.</p>
             ) : (
-              <table className="w-full text-2xl">
-                <thead>
-                  <tr className="border-b border-[color:var(--text-color)]/10">
-                    <th className="px-6 py-3 text-left text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Room Type</th>
-                    <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Capacity</th>
-                    <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Avail. Nights</th>
-                    <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Occupied</th>
-                    <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Occ. %</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {occupancy.map((row, i) => (
-                    <tr key={i} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
-                      <td className="px-6 py-4 font-medium text-[color:var(--black)]">{row.room_type_name}</td>
-                      <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{row.max_capacity}</td>
-                      <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{row.available_room_nights}</td>
-                      <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{Number(row.occupied_room_nights).toFixed(1)}</td>
-                      <td className="px-6 py-4 text-right">
-                        <OccupancyBadge value={row.occupancy_pct} />
-                      </td>
+              <div className="overflow-x-auto">
+                <table className="w-full text-2xl">
+                  <thead>
+                    <tr className="border-b border-[color:var(--text-color)]/10">
+                      <th className="px-6 py-3 text-left text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Room Type</th>
+                      <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Capacity</th>
+                      <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Avail. Nights</th>
+                      <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Occupied</th>
+                      <th className="px-6 py-3 text-right text-xl font-semibold text-[color:var(--text-color)]/76 uppercase tracking-wide">Occ. %</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody>
+                    {occupancy.map((row, i) => (
+                      <tr key={i} className="border-b border-[color:var(--text-color)]/10 hover:bg-black/2 transition-colors">
+                        <td className="px-6 py-4 font-medium text-[color:var(--black)]">{row.room_type_name}</td>
+                        <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{row.max_capacity}</td>
+                        <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{row.available_room_nights}</td>
+                        <td className="px-6 py-4 text-right text-[color:var(--text-color)]/84">{Number(row.occupied_room_nights).toFixed(1)}</td>
+                        <td className="px-6 py-4 text-right">
+                          <OccupancyBadge value={row.occupancy_pct} />
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
             )}
           </div>
         </div>

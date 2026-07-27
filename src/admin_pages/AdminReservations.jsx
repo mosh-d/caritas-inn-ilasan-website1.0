@@ -541,6 +541,9 @@ export default function AdminReservationsPage() {
 
   const res = selectedReservation;
   const canModify = res && res.status !== "cancelled" && res.status !== "completed";
+  // Same rule the backend now enforces on extendStay — don't let a stay that
+  // already owes money get pushed further out before it's settled.
+  const hasOutstandingBalance = Boolean(reservationFolio) && Number(reservationFolio.balance) > 0;
   // Read-only display for the Details section — sourced from the Deposits
   // ledger below rather than the free-editable field it used to be, since
   // that let staff overwrite the running total the ledger maintains
@@ -748,6 +751,14 @@ export default function AdminReservationsPage() {
           footer={res && (
             <>
               <button onClick={closeDetail} className={btn.secondary}>Close</button>
+              <button
+                onClick={() => navigate(`/admin/folios?reservation_id=${res.id}`)}
+                disabled={!reservationFolio}
+                className={btn.secondary}
+                title={!reservationFolio ? "No folio linked to this reservation yet" : undefined}
+              >
+                Go to Folio
+              </button>
               {res.status === "hold" && (
                 <button
                   onClick={() => openConfirmModal(res)}
@@ -999,9 +1010,17 @@ export default function AdminReservationsPage() {
                   <h3 className="text-2xl font-bold text-[color:var(--black)]">Extend Stay</h3>
                   <div className="flex gap-3 flex-nowrap items-center">
                     <input type="date" value={newCheckOutDate} onChange={(e) => setNewCheckOutDate(e.target.value)} className={field.input} />
-                    <button onClick={handleExtendStay} disabled={extending || !newCheckOutDate} className={`${btn.primary} whitespace-nowrap`}>
+                    <button
+                      onClick={handleExtendStay}
+                      disabled={extending || !newCheckOutDate || hasOutstandingBalance}
+                      className={`${btn.primary} whitespace-nowrap`}
+                      title={hasOutstandingBalance ? "Settle the outstanding balance before extending the stay" : undefined}
+                    >
                       {extending ? "Extending..." : "Extend"}
                     </button>
+                    {hasOutstandingBalance && (
+                      <span className="text-lg text-orange-600">Settle the outstanding balance before extending this stay.</span>
+                    )}
                   </div>
                 </section>
               )}
