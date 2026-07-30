@@ -16,13 +16,13 @@ import {
   assignRoom,
   checkAvailability,
   createAdminReservation,
-  confirmReservation,
+  confirmReservationById,
   fetchAvailableRoomNumbers,
 } from "../utils/reservations-pms-api";
 
 const BRANCH_ID = 4;
 const formatDate = (d) =>
-  d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A";
+  d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A";
 const todayISO = () => localTodayISO();
 const tomorrowISO = () => {
   const d = new Date();
@@ -205,7 +205,7 @@ export default function AdminCheckInsPage() {
       // checkIn both now require every booked room to already have a room
       // number (see reservations.service.ts), so this has to run first.
       await assignRoom(internalId, validRoomNumbers);
-      await confirmReservation(internalId);
+      await confirmReservationById(internalId);
       await checkInReservation(internalId);
 
       setWalkInSuccess({ bookingRef, guestName: walkIn.guestName.trim() });

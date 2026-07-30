@@ -2,6 +2,7 @@ import { useState, useCallback, useEffect, useRef } from "react";
 import { useWebSocketContext } from "../context/WebSocketContext";
 import axios from "axios";
 import { SERVER_BASE_URL } from "../utils/server-config";
+import { getAuthHeaders } from "../utils/auth";
 import { IoRefresh, IoClose, IoFilter } from "react-icons/io5";
 import Button from "../components/shared/Button";
 
@@ -81,8 +82,8 @@ export default function AdminBookingsPage() {
   const confirmReservation = async (reservationId) => {
     try {
       const baseUrl = API_BASE_URL.endsWith("/") ? API_BASE_URL.slice(0, -1) : API_BASE_URL;
-      const response = await axios.post(`${baseUrl}/api/reservations/confirm`, { reservation_id: reservationId },
-        { headers: { "Content-Type": "application/json" } }
+      const response = await axios.post(`${baseUrl}/api/reservations/${reservationId}/confirm`, {},
+        { headers: getAuthHeaders() }
       );
       setSuccessMessage(response.data.message);
       setTimeout(() => setSuccessMessage(""), 5000);
@@ -294,8 +295,8 @@ export default function AdminBookingsPage() {
                 { label: "PHONE NUMBER", value: selectedBooking.phone_number || "N/A" },
                 { label: "NO OF ROOMS", value: selectedBooking.no_of_rooms },
                 { label: "BOOKING ID", value: selectedBooking.booking_id },
-                { label: "CHECK-IN", value: new Date(selectedBooking.check_in_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) },
-                { label: "CHECK-OUT", value: new Date(selectedBooking.check_out_date).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) },
+                { label: "CHECK-IN", value: new Date(selectedBooking.check_in_date).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) },
+                { label: "CHECK-OUT", value: new Date(selectedBooking.check_out_date).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) },
                 { label: "ROOM STATUS", value: selectedBooking.status },
                 { label: "ROOM CATEGORY", value: selectedBooking.room_category || "Classic" }
               ].map((item, i) => (

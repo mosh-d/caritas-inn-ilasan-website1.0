@@ -19,7 +19,7 @@ import {
   markNoShow,
   undoNoShow,
   undoExpiredHold,
-  confirmReservation,
+  confirmReservationById,
   emergencyCheckout,
   buildReservationsExportUrl,
   checkInReservation,
@@ -31,7 +31,7 @@ import { fetchFolios, createFolio, fetchDeposits, recordDeposit, applyDeposit, r
 
 const STATUSES = ["hold", "confirmed", "active", "completed", "cancelled"];
 const BRANCH_ID = 4; // Caritas Inn Ilasan branch ID
-const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }) : "N/A");
+const formatDate = (d) => (d ? new Date(d).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) : "N/A");
 const money = (v) => `₦${Number(v || 0).toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 
 export default function AdminReservationsPage() {
@@ -333,7 +333,7 @@ export default function AdminReservationsPage() {
       if (selectedReservation?.id === confirmTarget.id) {
         await updateReservation(confirmTarget.id, buildReservationUpdatePayload());
       }
-      await confirmReservation(confirmTarget.id);
+      await confirmReservationById(confirmTarget.id);
       setSuccessMessage("Reservation confirmed.");
       setTimeout(() => setSuccessMessage(""), 5000);
       closeConfirmModal();
