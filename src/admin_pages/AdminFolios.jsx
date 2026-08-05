@@ -413,7 +413,7 @@ export default function AdminFoliosPage() {
               type="text"
               value={searchInput}
               onChange={(e) => setSearchInput(e.target.value)}
-              placeholder="Search by folio # or payment reference (e.g. FOL-D7931B, PAY-3F9A2B)"
+              placeholder="Search by folio #, guest name, or payment reference (e.g. FOL-D7931B, PAY-3F9A2B)"
               className={`${field.input} w-auto text-xl!`}
             />
             <button type="submit" className={btn.secondary}>Search</button>
@@ -431,7 +431,7 @@ export default function AdminFoliosPage() {
 
         <p className="text-xl text-[color:var(--text-color)]/76">
           {searchTerm
-            ? `Folios matching folio # or payment/refund reference "${searchTerm}".`
+            ? `Folios matching folio #, guest name, or payment/refund reference "${searchTerm}".`
             : subTab === "all"
             ? "Every folio across all guests, open and closed."
             : subTab === "pending"
@@ -461,7 +461,7 @@ export default function AdminFoliosPage() {
                 ) : error ? (
                   <tr><td colSpan={folioTableColSpan} className="px-8 py-10 text-center text-red-600 text-xl">{error}</td></tr>
                 ) : folios.length === 0 ? (
-                  <tr><td colSpan={folioTableColSpan} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">{searchTerm ? "No folios match that folio # or payment reference." : "No folios match filter."}</td></tr>
+                  <tr><td colSpan={folioTableColSpan} className="px-8 py-10 text-center text-xl text-[color:var(--text-color)]/68">{searchTerm ? "No folios match that folio #, guest name, or payment reference." : "No folios match filter."}</td></tr>
                 ) : (
                   folios.map((f) => (
                     <tr key={f.id} className={table.row}>
