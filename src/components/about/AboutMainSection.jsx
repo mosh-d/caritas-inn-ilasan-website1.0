@@ -16,13 +16,7 @@ export default function AboutMainSection() {
             Seamless Comfort and Hospitality
           </h1>
           <p className="text-3xl">
-            Caritas Inn, Ilasan seamlessly blends modern comfort with the warmth
-            of West African hospitality, offering a unique and inviting
-            experience for our esteemed guests. Located in the serene and
-            upscale Lekki Phase 2 area of Lagos, our hotel offers a balanced mix
-            of relaxation, workspaces, and proximity to popular destinations,
-            making it a top choice for travelers seeking comfort and convenience
-            in Lekki.
+            In Lekki Phase 2, one of Lagos's more sought-after addresses, Caritas Inn Ilasan combines modern comfort with the warmth guests expect from West African hospitality. The hotel is designed for people who want a workable base close to the city's best without sacrificing calm - a strong fit for travelers prioritizing both convenience and comfort in Lekki.
           </p>
         </div>
         <div data-component="Block2" className="flex flex-col w-full">
@@ -41,19 +35,11 @@ export default function AboutMainSection() {
               data-component="Block2Text"
               className="flex flex-col gap-[1.8rem] font-secondary bg-[color:var(--background-color-2)] w-[100%] p-[12rem] max-md:p-[6rem] max-sm:p-[4rem]"
             >
-              <h1 className="text-6xl font-bold">
+              <h2 className="text-6xl font-bold">
                 Your Ideal Retreat for Comfort and Convenience
-              </h1>
+              </h2>
               <p className="text-3xl">
-                Welcome to a new standard of hospitality in Lekki. Caritas Inn
-                is a modern hotel located in the peaceful Ilasan area with easy
-                access to the Lekki-Epe Expressway. It offers a perfect
-                environment for both business and leisure travelers by combining
-                comfort, functionality, and elegance. The hotel features a
-                variety of well-appointed rooms designed for relaxation,
-                including king-sized beds with luxurious bedding, a coffee
-                station with complimentary packages, air conditioning, free
-                Wi-Fi, flat-screen TVs, and ensuite bathrooms.
+                Caritas Inn brings a new hospitality standard to Ilasan, with the Lekki-Epe Expressway just minutes away. Built for business and leisure travelers alike, the hotel focuses on comfort and function in equal measure: king-sized beds with quality bedding, a complimentary coffee station, air conditioning, free Wi-Fi, flat-screen TVs, and an ensuite bathroom in every room.
               </p>
             </div>
           </div>
@@ -63,16 +49,11 @@ export default function AboutMainSection() {
               data-component="Block2Text"
               className="flex flex-col gap-[1.8rem] font-secondary bg-[color:var(--background-color-2)] w-[100%] p-[12rem] max-md:p-[6rem] max-sm:p-[4rem]"
             >
-              <h1 className="text-6xl font-bold">
+              <h2 className="text-6xl font-bold">
                 Experience Tranquil Stays with Unmatched Security
-              </h1>
+              </h2>
               <p className="text-3xl">
-                Caritas Inn is a modern hotel located in the peaceful Lekki Phase 2
-                area. We ensure a secure environment with advanced surveillance
-                systems and a dedicated team, providing peace of mind throughout
-                your stay. We offer more than just a place to stay; we provide a
-                luxurious experience marked by comfort, security, and
-                personalized service.
+                Tucked into the quieter side of Lekki Phase 2, Caritas Inn Ilasan takes security seriously - advanced surveillance and a dedicated on-site team keep watch so you don't have to. It's a stay built on more than just a bed: comfort, safety, and service that's genuinely personal.
               </p>
             </div>
             <div
@@ -92,18 +73,15 @@ export default function AboutMainSection() {
           className="bg-[color:var(--text-color)] p-[6rem] flex max-sm:flex-col gap-[6rem] text-[var(--white)] font-secondary"
         >
           <div className="flex flex-col gap-[1.8rem]">
-            <h1 className="text-6xl font-secondary font-bold">Our Vision</h1>
+            <h2 className="text-6xl font-secondary font-bold">Our Vision</h2>
             <p className="text-3xl">
-              To be an organically developed global hotel management company
-              that excels in its core components of place, service,
-              people and system.
+              Our aim reaches past any one branch - we're building an organically grown hotel group that sets the standard on location, service, people, and the systems behind them.
             </p>
           </div>
           <div className="flex flex-col gap-[1.8rem]">
-            <h1 className="text-6xl font-secondary font-bold">Our Mission</h1>
+            <h2 className="text-6xl font-secondary font-bold">Our Mission</h2>
             <p className="text-3xl">
-              Our mission is to be the most hospitable company in the world by
-              creating world-class experiences for guests.
+              At Caritas Inn Ilasan, that vision shows up in the details - we want to be remembered as the most hospitable stay of your trip.
             </p>
           </div>
         </div>

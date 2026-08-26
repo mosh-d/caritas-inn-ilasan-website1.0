@@ -2,7 +2,7 @@ import { Helmet } from "react-helmet";
 
 const SEO = ({
   title = "Caritas Inn Ilasan | Luxury Accommodation in Lekki Phase 2, Lagos",
-  description = "Experience luxury and comfort at Caritas Inn Ilasan. Book your stay at our premium hotel in Lekki Phase 2, Lagos.",
+  description = "Caritas Inn Ilasan puts you in upscale Lekki Phase 2, with quick access to the Lekki-Epe Expressway - comfortable rooms and dependable service on Howard Edafe Street.",
   keywords = "hotel, lagos, accommodation, caritas inn, ilasan, lekki, lekki phase 2, luxury hotel, nigeria, business hotel, vacation",
   image = 'https://ilasan.caritasinn.com/caritas-logo-2.webp',
   url = typeof window !== "undefined"

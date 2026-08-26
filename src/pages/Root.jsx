@@ -233,7 +233,7 @@ export default function RootLayout() {
       title:
         "Caritas Inn Ilasan | Luxury Accommodation in Lekki Phase 2, Lagos",
       description:
-        "Experience luxury and comfort at Caritas Inn Ilasan. Book your stay at our premium hotel in Lekki Phase 2, Lagos.",
+        "Caritas Inn Ilasan puts you in upscale Lekki Phase 2, with quick access to the Lekki-Epe Expressway - comfortable rooms and dependable service on Howard Edafe Street.",
       url: `${baseUrl}${location.pathname}`,
       type: "website",
       image: "/ring-ruby-logo.webp",
@@ -245,7 +245,7 @@ export default function RootLayout() {
         title:
           "Caritas Inn Ilasan | Luxury Accommodation in Lekki Phase 2, Lagos",
         description:
-          "Experience luxury and comfort at Caritas Inn Ilasan. Book your stay at our premium hotel in Lekki Phase 2, Lagos.",
+          "Caritas Inn Ilasan puts you in upscale Lekki Phase 2, with quick access to the Lekki-Epe Expressway - comfortable rooms and dependable service on Howard Edafe Street.",
       },
       "/about": {
         title: "About Us | Caritas Inn Ilasan",
@@ -263,6 +263,17 @@ export default function RootLayout() {
           "Your booking confirmation at Caritas Inn Ilasan.",
         robots: "noindex, follow",
       },
+      "/privacy-policy": {
+        title: "Privacy Policy | Caritas Inn Ilasan",
+        description:
+          "Read Caritas Inn Ilasan's privacy policy to learn how we collect, use, and protect your personal information.",
+      },
+      "/terms-of-service": {
+        title: "Terms and Conditions | Caritas Inn Ilasan",
+        description:
+          "Read the terms and conditions that apply to bookings and website use at Caritas Inn Ilasan.",
+      },
+
     };
 
     return { ...defaultMetadata, ...(pageMetadata[location.pathname] || {}) };

@@ -3,23 +3,37 @@
   
     <url>
       <loc>https://ilasan.caritasinn.com/</loc>
-      <lastmod>2026-06-09T12:05:55.092Z</lastmod>
+      <lastmod>2026-08-26T19:06:30.896Z</lastmod>
       <changefreq>daily</changefreq>
       <priority>1</priority>
     </url>
   
     <url>
       <loc>https://ilasan.caritasinn.com/about</loc>
-      <lastmod>2026-06-09T12:05:55.094Z</lastmod>
+      <lastmod>2026-08-26T19:06:30.898Z</lastmod>
       <changefreq>weekly</changefreq>
       <priority>0.8</priority>
     </url>
   
     <url>
       <loc>https://ilasan.caritasinn.com/contact</loc>
-      <lastmod>2026-06-09T12:05:55.094Z</lastmod>
+      <lastmod>2026-08-26T19:06:30.898Z</lastmod>
       <changefreq>monthly</changefreq>
       <priority>0.6</priority>
+    </url>
+  
+    <url>
+      <loc>https://ilasan.caritasinn.com/privacy-policy</loc>
+      <lastmod>2026-08-26T19:06:30.899Z</lastmod>
+      <changefreq>yearly</changefreq>
+      <priority>0.3</priority>
+    </url>
+  
+    <url>
+      <loc>https://ilasan.caritasinn.com/terms-of-service</loc>
+      <lastmod>2026-08-26T19:06:30.899Z</lastmod>
+      <changefreq>yearly</changefreq>
+      <priority>0.3</priority>
     </url>
   
 </urlset>
