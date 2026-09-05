@@ -5,6 +5,7 @@ import { SERVER_BASE_URL } from "../utils/server-config";
 import { getAuthHeaders } from "../utils/auth";
 import { IoRefresh, IoClose, IoFilter } from "react-icons/io5";
 import Button from "../components/shared/Button";
+import { formatPhone } from "../utils/phone-format";
 
 const API_BASE_URL = SERVER_BASE_URL;
 
@@ -294,7 +295,7 @@ export default function AdminBookingsPage() {
             <div className="p-10 flex flex-col gap-2">
               {[
                 { label: "EMAIL", value: selectedBooking.guest_email || "N/A" },
-                { label: "PHONE NUMBER", value: selectedBooking.phone_number || "N/A" },
+                { label: "PHONE NUMBER", value: selectedBooking.phone_number ? formatPhone(selectedBooking.phone_number) : "N/A" },
                 { label: "NO OF ROOMS", value: selectedBooking.no_of_rooms },
                 { label: "BOOKING ID", value: selectedBooking.booking_id },
                 { label: "CHECK-IN", value: new Date(selectedBooking.check_in_date).toLocaleDateString("en-US", { timeZone: "Africa/Lagos", month: "short", day: "numeric", year: "numeric" }) },
