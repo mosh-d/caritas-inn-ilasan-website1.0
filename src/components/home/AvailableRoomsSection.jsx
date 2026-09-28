@@ -190,6 +190,7 @@ export default function AvailableRoomsSection() {
   };
 
   // Room type to gallery images mapping (Mobile)
+  // eslint-disable-next-line no-unused-vars -- parked, not dead: the mobile image set was switched off on purpose and is kept for turning back on
   const mobileRoomGalleryImages = {
     "Budget Suite": mobileBudgetImages,
     "Standard Suite": mobileStandardImages,
@@ -208,6 +209,7 @@ export default function AvailableRoomsSection() {
   };
 
   // Room type to primary image mapping (Mobile)
+  // eslint-disable-next-line no-unused-vars -- parked, not dead: the mobile image set was switched off on purpose and is kept for turning back on
   const mobileRoomTypeImages = {
     "Budget Suite": mobileBudgetImage,
     "Standard Suite": mobileStandardImage,

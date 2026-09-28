@@ -12,7 +12,6 @@ const SEO = ({
   noindex = false,
 }) => {
   const siteName = "Caritas Inn Ilasan";
-  const siteUrl = "https://ilasan.caritasinn.com";
   const twitterHandle = "@fivecloverhotel";
 
   return (

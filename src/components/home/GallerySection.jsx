@@ -104,6 +104,7 @@ function ImageWithOverlay({ src, alt, index, className, onOpen }) {
 export default function GallerySection() {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [currentImageIndex, setCurrentImageIndex] = useState(0);
+  // eslint-disable-next-line no-unused-vars -- parked, not dead: the mobile image set was switched off on purpose and is kept for turning back on
   const [isMobile, setIsMobile] = useState(typeof window !== "undefined" ? window.innerWidth < 640 : false);
 
   // Update mobile state on window resize
@@ -141,6 +142,7 @@ export default function GallerySection() {
   ];
 
   // Mobile gallery images array (portrait - 20 images)
+  // eslint-disable-next-line no-unused-vars -- parked, not dead: the mobile image set was switched off on purpose and is kept for turning back on
   const mobileGalleryImages = [
     { src: MobileGallery1, alt: "Gallery 1" },
     { src: MobileGallery2, alt: "Gallery 2" },

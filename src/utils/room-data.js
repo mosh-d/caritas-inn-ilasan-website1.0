@@ -1,8 +1,8 @@
 import axios from "axios";
 import { SERVER_BASE_URL } from "./server-config";
+import { BRANCH_ID } from "./branch";
 
 const API_BASE_URL = SERVER_BASE_URL;
-const BRANCH_ID = 4;
 
 export const fetchRoomDetails = async (checkIn, checkOut) => {
   try {
